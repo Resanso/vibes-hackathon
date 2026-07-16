@@ -32,6 +32,9 @@ else
   echo "==> package.json unchanged, skipping npm install"
 fi
 
+echo "==> Building"
+ssh "$REMOTE_HOST" "cd $REMOTE_PATH && npm run build"
+
 echo "==> Restarting PM2 process: $PM2_APP"
 ssh "$REMOTE_HOST" "cd $REMOTE_PATH && (pm2 restart $PM2_APP || pm2 start npm --name $PM2_APP -- start)"
 
