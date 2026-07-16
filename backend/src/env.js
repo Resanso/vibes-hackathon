@@ -14,6 +14,9 @@ export const env = createEnv({
     SHARED_API_KEY: z.string().min(1),
     MAIA_API_KEY: z.string().optional(),
     MAIA_BASE_URL: z.string().url().optional(),
+    // whatsapp-service's localhost-only internal trigger server (same VPS) —
+    // used by reminders.triggerNow, see src/server/api/routers/reminders.ts
+    WHATSAPP_SERVICE_URL: z.string().url().default("http://localhost:4001"),
   },
 
   /**
@@ -35,6 +38,7 @@ export const env = createEnv({
     SHARED_API_KEY: process.env.SHARED_API_KEY,
     MAIA_API_KEY: process.env.MAIA_API_KEY,
     MAIA_BASE_URL: process.env.MAIA_BASE_URL,
+    WHATSAPP_SERVICE_URL: process.env.WHATSAPP_SERVICE_URL,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

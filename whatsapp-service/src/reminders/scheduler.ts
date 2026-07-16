@@ -24,7 +24,7 @@ function sleep(ms: number): Promise<void> {
 export async function sendDueReminders(
   sock: WASocket,
   logger: Logger,
-): Promise<void> {
+): Promise<number> {
   const due = await backend.dueSoon({ withinDays: env.REMINDER_WINDOW_DAYS });
 
   logger.info({ count: due.length }, "Sending due-installment reminders");
@@ -50,6 +50,8 @@ export async function sendDueReminders(
 
     await sleep(randomDelayMs());
   }
+
+  return due.length;
 }
 
 // Registered exactly once at startup (see index.ts) — looks up whatever

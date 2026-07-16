@@ -25,8 +25,12 @@ export async function explainRisk(risk: RiskScoreResult): Promise<string> {
 
   try {
     const completion = await maia.chat.completions.create({
-      // check MAIA Router's docs for the exact model string before hardcoding one
-      model: "gpt-4o-mini",
+      // DeepSeek Flash via MAIA Router — not independently verified against
+      // MAIA's own docs (router.maia.id was unreachable — "no route to
+      // host" — from both the VPS and a local sandbox when this was wired
+      // up; likely an IP-allowlist requirement on MAIA's side). If this
+      // model string 404s, check MAIA Router's dashboard for the exact ID.
+      model: "deepseek-v4-flash",
       messages: [
         {
           role: "system",

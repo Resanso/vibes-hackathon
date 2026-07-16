@@ -3,6 +3,7 @@ import "dotenv/config";
 import { PrismaClient } from "../generated/prisma/index.js";
 import { BOT_SESSION_ID, logger, startSession } from "./connection.js";
 import { handleIncomingMessage } from "./handlers/quickConsult.js";
+import { startTriggerServer } from "./internal/triggerServer.js";
 import { linkPersonalNumber } from "./personal/linkPersonalNumber.js";
 import { listActiveLinkedNumbers } from "./personal/linkedNumbers.js";
 import { scheduleReminders } from "./reminders/scheduler.js";
@@ -14,6 +15,7 @@ async function main(): Promise<void> {
     onMessages: handleIncomingMessage,
   });
   scheduleReminders();
+  startTriggerServer();
 
   // Reconnect every previously-linked student number — pairing itself
   // (the QR scan) only ever happens once, via `npm run link:number`, but the

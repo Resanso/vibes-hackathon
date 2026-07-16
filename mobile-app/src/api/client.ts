@@ -107,6 +107,7 @@ export interface AssessRiskInput {
 export type RiskLabel = "aman" | "waspada" | "bahaya";
 
 export interface RiskAssessment {
+  id: string;
   riskScore: number;
   riskLabel: RiskLabel;
   reasons: string[];
@@ -140,4 +141,40 @@ export interface TrendEntry {
 
 export function getDashboardTrend(phone: string): Promise<TrendEntry[]> {
   return trpcQuery<TrendEntry[]>("dashboard.trend", { phone });
+}
+
+export function getProfile(phone: string): Promise<Profile | null> {
+  return trpcQuery<Profile | null>("profile.get", { phone });
+}
+
+// Testing-only escape hatch — fires an immediate reminder run on
+// whatsapp-service instead of waiting for its daily cron. See ProfileTab.
+export function triggerReminders(): Promise<{ sent: number }> {
+  return trpcMutation<{ sent: number }>("reminders.triggerNow", undefined);
+}
+
+// "State 2": tracking payoff progress on a loan the student actually took
+// (not just simulated) — see backend/src/server/api/routers/tracking.ts.
+export interface TrackingStatus {
+  riskEntryId: string;
+  principal: number;
+  totalRepayment: number;
+  startedAt: string;
+  dailyTargetAmount: number;
+  daysConfirmed: number;
+  amountSaved: number;
+  remainingAmount: number;
+  confirmedToday: boolean;
+}
+
+export function startTracking(riskEntryId: string): Promise<TrackingStatus> {
+  return trpcMutation<TrackingStatus>("tracking.start", { riskEntryId });
+}
+
+export function checkInTracking(phone: string): Promise<unknown> {
+  return trpcMutation("tracking.checkIn", { phone, source: "app" });
+}
+
+export function getTrackingStatus(phone: string): Promise<TrackingStatus | null> {
+  return trpcQuery<TrackingStatus | null>("tracking.status", { phone });
 }
