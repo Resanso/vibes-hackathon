@@ -32,6 +32,14 @@ whatsapp-service/*.tsbuildinfo
 # testing
 coverage/
 
+# SSH — config and keys live in ~/.ssh outside this repo and must never be
+# committed; these patterns are a defensive backstop in case one ever ends up
+# inside the working tree (e.g. copied in by mistake).
+.ssh/
+id_rsa*
+id_ed25519*
+*.ppk
+
 # misc
 .DS_Store
 *.pem

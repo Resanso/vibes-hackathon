@@ -21,7 +21,8 @@
       "Bash(npm --prefix backend run dev)",
       "Bash(npx eslint *)",
       "Bash(npx prettier *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(ssh nera-vps *)"
     ]
   },
   "hooks": {
