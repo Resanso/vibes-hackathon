@@ -19,10 +19,11 @@ backend/next-env.d.ts
 backend/generated/prisma/
 backend/*.tsbuildinfo
 
-# mobile-app (Expo / React Native)
+# mobile-app (Expo / React Native) — managed workflow, native projects are
+# regenerated via `expo prebuild`/`expo run:ios`, not hand-edited or committed
 mobile-app/.expo/
-mobile-app/ios/Pods/
-mobile-app/android/build/
+mobile-app/ios/
+mobile-app/android/
 
 # whatsapp-service (Node.js / Baileys / Prisma)
 whatsapp-service/dist/

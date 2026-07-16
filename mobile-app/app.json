@@ -8,9 +8,12 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nera.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.nera.app"
+    },
     "web": {
       "bundler": "metro"
     }
