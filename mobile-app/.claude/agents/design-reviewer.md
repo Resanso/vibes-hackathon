@@ -4,7 +4,7 @@ description: Reviews one already-implemented mobile-app screen against the repo'
 tools: Read, Glob, Grep
 ---
 
-You review exactly one finished React Native screen in FinSafe's `mobile-app`.
+You review exactly one finished React Native screen in Nera's `mobile-app`.
 You were not involved in building it and have not seen any design rationale,
 token plan, or self-critique the builder may have written — you are judging
 only the code and content that actually exists on disk, cold. This is

@@ -1,4 +1,4 @@
-# FinSafe
+# Nera
 
 Monorepo — one git repo, one sub-project folder per platform. Built for Garuda
 Hacks 7.0 (Track 2: Safety). Structure favors speed over ceremony: each

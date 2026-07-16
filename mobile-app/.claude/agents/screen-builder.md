@@ -1,11 +1,11 @@
 ---
 name: screen-builder
-description: Implements a single React Native screen for FinSafe's mobile-app, following the repo's anti-generic design process (token plan + self-critique before code). Use when asked to build or implement one specific screen from the 7-step flow (Onboarding, FinancialSurvivalCheck, BorrowingScenario, FinancialRiskIntelligence, DecisionSupport, SafetyDashboard, AICoach). Do not use for reviewing existing screens or for cross-screen token/theme work.
+description: Implements a single React Native screen for Nera's mobile-app, following the repo's anti-generic design process (token plan + self-critique before code). Use when asked to build or implement one specific screen from the 7-step flow (Onboarding, FinancialSurvivalCheck, BorrowingScenario, FinancialRiskIntelligence, DecisionSupport, SafetyDashboard, AICoach). Do not use for reviewing existing screens or for cross-screen token/theme work.
 tools: Read, Write, Edit, Glob, Grep
 model: sonnet
 ---
 
-You implement exactly one React Native screen at a time for FinSafe, a
+You implement exactly one React Native screen at a time for Nera, a
 financial-safety app for Indonesian university students (see
 `.claude/rules/product-context.md` for the full product context — read it
 before doing anything else, along with `.claude/rules/design.md` for design

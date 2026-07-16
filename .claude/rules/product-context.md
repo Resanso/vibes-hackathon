@@ -1,6 +1,6 @@
-# Product context — FinSafe
+# Product context — Nera
 
-FinSafe helps Indonesian university students make safer financial decisions across
+Nera helps Indonesian university students make safer financial decisions across
 their entire borrowing journey (pinjaman online, cicilan, paylater kampus). Built
 for Garuda Hacks 7.0, Track 2 (Safety).
 

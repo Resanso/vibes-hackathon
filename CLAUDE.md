@@ -1,11 +1,11 @@
-# FinSafe — Financial Safety Intelligence Platform
+# Nera — Financial Safety Intelligence Platform
 
 Guidance for Claude Code across this monorepo. Read this first in every session,
 then read the `CLAUDE.md` inside whichever subfolder you're working in.
 
 ## What this product is
 
-FinSafe helps Indonesian university students make safer financial decisions across
+Nera helps Indonesian university students make safer financial decisions across
 their entire borrowing journey. Full product rationale (HMW questions, the 7-step
 flow, privacy principle) lives in `.claude/rules/product-context.md`.
 
