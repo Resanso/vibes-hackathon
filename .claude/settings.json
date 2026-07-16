@@ -1,0 +1,52 @@
+{
+  "attribution": {
+    "commit": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(npm --prefix web-app run lint)",
+      "Bash(npm --prefix web-app run lint:fix)",
+      "Bash(npm --prefix web-app run typecheck)",
+      "Bash(npm --prefix web-app run check)",
+      "Bash(npm --prefix web-app run build)",
+      "Bash(npm --prefix web-app run format:check)",
+      "Bash(npm --prefix web-app run format:write)",
+      "Bash(npm --prefix web-app run dev)",
+      "Bash(npx eslint *)",
+      "Bash(npx prettier *)",
+      "Bash(npx tsc *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | { read -r f; case \"$f\" in *.ts|*.tsx|*.js|*.jsx) d=$(dirname \"$f\"); while [ \"$d\" != \".\" ] && [ \"$d\" != \"/\" ] && [ ! -f \"$d/package.json\" ]; do d=$(dirname \"$d\"); done; if [ -f \"$d/package.json\" ]; then rel=${f#$d/}; (cd \"$d\" && npx eslint \"$rel\" --no-warn-ignored); fi ;; esac; } 2>&1 || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hookrc=0; for d in */; do d=${d%/}; if [ -f \"$d/package.json\" ]; then if node -e \"const p=require('./'+process.argv[1]+'/package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)\" \"$d\"; then (cd \"$d\" && npm test) || hookrc=1; else (cd \"$d\" && npm run check) || hookrc=1; fi; fi; done; exit $hookrc",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}

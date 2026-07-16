@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, edited]
+
+jobs:
+  check-web-app:
+    name: web-app / lint & typecheck
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint + typecheck
+        run: npm run check
+
+      # No test script exists in web-app/package.json yet. Once a test runner
+      # is added (e.g. `npm run test`), add a step here to run it in CI.
+
+  # Add one check-<sub-project> job per sub-project as they're created
+  # (e.g. check-mobile-app, check-backend-service), each scoped with its own
+  # `working-directory` so unrelated sub-projects don't block each other.
+
+  claude-review:
+    name: Claude review on @claude mention
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Claude Code review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  # TODO: deployment
+  # This project has no deploy target configured yet. Add a job here once
+  # you've decided on a host (e.g. Vercel, a Docker registry + server, etc.)
+  # and wire up the relevant secrets. Do not auto-deploy on every merge to
+  # main without an explicit manual-approval gate (e.g. a `environment:`
+  # with required reviewers, or a workflow_dispatch trigger).

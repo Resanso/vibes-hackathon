@@ -1,0 +1,52 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Monorepo: patterns below are unanchored (no leading slash) so they apply inside
+# every sub-project folder, not just the repo root.
+
+# dependencies (all sub-projects)
+node_modules/
+.pnp
+.pnp.js
+
+# local env files — do not commit any .env files, except .env.example
+.env
+.env.local
+.env*.local
+
+# web-app (Next.js / Prisma)
+web-app/.next/
+web-app/out/
+web-app/next-env.d.ts
+web-app/generated/prisma/
+web-app/*.tsbuildinfo
+
+# mobile-app — illustrative, adjust once a mobile sub-project actually exists
+# mobile-app/.expo/          # Expo
+# mobile-app/ios/Pods/       # React Native bare
+# mobile-app/android/build/
+# mobile-app/.dart_tool/     # Flutter
+# mobile-app/build/
+
+# backend-service — illustrative, adjust once a backend sub-project actually exists
+# backend-service/dist/
+
+# testing
+coverage/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# idea files
+.idea
