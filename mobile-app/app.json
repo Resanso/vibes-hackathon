@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Nera",
+    "slug": "nera",
+    "scheme": "nera",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
