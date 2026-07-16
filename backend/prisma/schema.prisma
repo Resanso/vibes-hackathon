@@ -19,6 +19,20 @@ model Profile {
     createdAt           DateTime @default(now())
     updatedAt           DateTime @updatedAt
 
+    // Which service sends this student their reminders/quick-consult
+    // replies — "whatsapp" | "telegram", switchable any time from
+    // mobile-app's Profil tab. Threat-detection (linked WhatsApp number
+    // monitoring) is intentionally NOT gated by this — it stays
+    // WhatsApp-only regardless of notification channel, since it's tied to
+    // a separately-linked WhatsApp session, not the reminder/quick-consult
+    // path. Defaults to "whatsapp" since that's the only channel that
+    // existed before Telegram support was added.
+    notificationChannel String  @default("whatsapp")
+    // Set once via telegram-service's /start contact-share flow — required
+    // before notificationChannel can be switched to "telegram" (see
+    // profile.setChannel).
+    telegramChatId      String? @unique
+
     riskEntries RiskEntry[]
 }
 
@@ -84,7 +98,7 @@ model DailyCheckIn {
     // createdAt, so a WhatsApp reply and an in-app tap for the same day
     // don't create two rows (see the unique constraint below).
     date      DateTime
-    source    String // "app" | "whatsapp"
+    source    String // "app" | "whatsapp" | "telegram"
     createdAt DateTime @default(now())
 
     @@unique([loanTrackingId, date])

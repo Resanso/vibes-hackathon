@@ -76,7 +76,7 @@ export const trackingRouter = createTRPCRouter({
     .input(
       z.object({
         phone: z.string().min(1),
-        source: z.enum(["app", "whatsapp"]),
+        source: z.enum(["app", "whatsapp", "telegram"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -106,20 +106,25 @@ export const trackingRouter = createTRPCRouter({
     .input(z.object({ phone: z.string().min(1) }))
     .query(({ input }) => loadStatusByPhone(input.phone)),
 
-  // For whatsapp-service's daily cron: every active tracking whose phone
-  // hasn't confirmed today yet, so it knows who to remind/alert.
-  pendingToday: apiKeyProcedure.query(async ({ ctx }) => {
-    const today = startOfDayUTC(new Date());
+  // For each messaging service's evening cron: every active tracking whose
+  // phone hasn't confirmed today yet AND whose Profile.notificationChannel
+  // matches, so it knows who to remind/alert without double-sending across
+  // both services.
+  pendingToday: apiKeyProcedure
+    .input(z.object({ channel: z.enum(["whatsapp", "telegram"]).default("whatsapp") }))
+    .query(async ({ ctx, input }) => {
+      const today = startOfDayUTC(new Date());
 
-    const trackings = await ctx.db.loanTracking.findMany({
-      include: { checkIns: { where: { date: today } } },
-    });
+      const trackings = await ctx.db.loanTracking.findMany({
+        where: { riskEntry: { profile: { notificationChannel: input.channel } } },
+        include: { checkIns: { where: { date: today } } },
+      });
 
-    return trackings
-      .filter((t) => t.checkIns.length === 0)
-      .map((t) => ({
-        phone: t.phone,
-        dailyTargetAmount: t.dailyTargetAmount,
-      }));
-  }),
+      return trackings
+        .filter((t) => t.checkIns.length === 0)
+        .map((t) => ({
+          phone: t.phone,
+          dailyTargetAmount: t.dailyTargetAmount,
+        }));
+    }),
 });

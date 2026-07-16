@@ -76,6 +76,8 @@ export async function trpcMutation<T>(path: string, input: unknown): Promise<T> 
   return unwrap<T>(response);
 }
 
+export type NotificationChannel = "whatsapp" | "telegram";
+
 export interface Profile {
   phone: string;
   monthlyIncome: number;
@@ -83,6 +85,8 @@ export interface Profile {
   dependents: number;
   createdAt: string;
   updatedAt: string;
+  notificationChannel: NotificationChannel;
+  telegramChatId: string | null;
 }
 
 export interface UpsertProfileInput {
@@ -147,10 +151,22 @@ export function getProfile(phone: string): Promise<Profile | null> {
   return trpcQuery<Profile | null>("profile.get", { phone });
 }
 
-// Testing-only escape hatch — fires an immediate reminder run on
-// whatsapp-service instead of waiting for its daily cron. See ProfileTab.
-export function triggerReminders(): Promise<{ sent: number }> {
-  return trpcMutation<{ sent: number }>("reminders.triggerNow", undefined);
+// Testing-only escape hatch — fires an immediate reminder run on whichever
+// channel's service instead of waiting for its daily cron. See ProfileTab.
+export function triggerReminders(
+  channel: NotificationChannel = "whatsapp",
+): Promise<{ sent: number }> {
+  return trpcMutation<{ sent: number }>("reminders.triggerNow", { channel });
+}
+
+// Switches which service sends this student their reminders/quick-consult
+// replies. Switching to "telegram" fails (PRECONDITION_FAILED) if the
+// student hasn't linked a Telegram chat yet via the bot's /start flow.
+export function setNotificationChannel(
+  phone: string,
+  channel: NotificationChannel,
+): Promise<Profile> {
+  return trpcMutation<Profile>("profile.setChannel", { phone, channel });
 }
 
 // "State 2": tracking payoff progress on a loan the student actually took

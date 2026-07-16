@@ -17,6 +17,9 @@ export const env = createEnv({
     // whatsapp-service's localhost-only internal trigger server (same VPS) —
     // used by reminders.triggerNow, see src/server/api/routers/reminders.ts
     WHATSAPP_SERVICE_URL: z.string().url().default("http://localhost:4001"),
+    // telegram-service's localhost-only internal trigger server (same VPS) —
+    // used by reminders.triggerNow when channel is "telegram".
+    TELEGRAM_SERVICE_URL: z.string().url().default("http://localhost:4002"),
   },
 
   /**
@@ -39,6 +42,7 @@ export const env = createEnv({
     MAIA_API_KEY: process.env.MAIA_API_KEY,
     MAIA_BASE_URL: process.env.MAIA_BASE_URL,
     WHATSAPP_SERVICE_URL: process.env.WHATSAPP_SERVICE_URL,
+    TELEGRAM_SERVICE_URL: process.env.TELEGRAM_SERVICE_URL,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

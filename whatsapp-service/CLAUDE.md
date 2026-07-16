@@ -175,6 +175,19 @@ failed archive still leaves a queryable trail of what was detected.
   Baileys GitHub issues — accounts have been banned even when code worked
   fine locally. `sendDueReminders()` already randomizes a 1.5-3s delay
   between sends; don't remove it, and don't add bulk/concurrent sending.
+  **This actually happened during development** (2026-07-17): the bot
+  number's WhatsApp account got auto-restricted ("Saat ini akun Anda
+  dibatasi" — can't start new chats/use some features, ~6h timer) after a
+  cluster of re-pairings and manual trigger calls in a short testing window.
+  It also got logged out (`statusCode 401`) around the same time. If this
+  happens again: **stop all pairing/send attempts until the restriction
+  timer clears** — retrying during the restriction risks escalating to a
+  permanent ban, not just clearing it faster. Once clear, send a few normal
+  manual messages from the phone itself before resuming automated sends.
+  Longer-term mitigation to consider: use a dedicated WhatsApp Business
+  number for the bot instead of a personal number (newer/personal numbers
+  are more spam-sensitive), and avoid repeated QR re-pairing within a short
+  window during testing.
 - **Never add a third-party "anti-ban" package without vetting it first** — a
   popular one (`lotusbail`, ~56k downloads) was confirmed exfiltrating
   session credentials.

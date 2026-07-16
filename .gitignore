@@ -30,6 +30,10 @@ whatsapp-service/dist/
 whatsapp-service/generated/prisma/
 whatsapp-service/*.tsbuildinfo
 
+# telegram-service (Node.js / grammY)
+telegram-service/dist/
+telegram-service/*.tsbuildinfo
+
 # testing
 coverage/
 

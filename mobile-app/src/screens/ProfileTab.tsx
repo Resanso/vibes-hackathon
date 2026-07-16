@@ -1,13 +1,25 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, SafeAreaView, ScrollView, Text, View } from "react-native";
-import { Calendar1, CreditCard, Phone, User, Users, Wallet } from "lucide-react-native";
+import { ActivityIndicator, Linking, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { Calendar1, CreditCard, Phone, Send, User, Users, Wallet } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 
-import { ApiError, getProfile, triggerReminders, type Profile } from "../api/client";
+import {
+  ApiError,
+  getProfile,
+  setNotificationChannel,
+  triggerReminders,
+  type NotificationChannel,
+  type Profile,
+} from "../api/client";
 import { SecondaryButton } from "../components/SecondaryButton";
 import { StatusToast } from "../components/StatusToast";
 import { colors } from "../theme/colors";
 import { useSessionStore } from "../store/sessionStore";
+
+// The actual bot registered for this project via @BotFather — see
+// telegram-service/CLAUDE.md. Hardcoded since there's only ever one bot for
+// this product, same reasoning as brand tokens being hardcoded in theme/.
+const TELEGRAM_BOT_USERNAME = "nera70_bot";
 
 function formatRupiah(amount: number): string {
   return `Rp${amount.toLocaleString("id-ID")}`;
@@ -53,12 +65,17 @@ export function ProfileTab() {
   const [triggerResult, setTriggerResult] = useState<
     { variant: "success" | "error"; message: string } | null
   >(null);
+  const [switchingChannel, setSwitchingChannel] = useState(false);
+  const [channelResult, setChannelResult] = useState<
+    { variant: "success" | "error"; message: string } | null
+  >(null);
 
   async function handleTriggerReminders() {
+    const channel = profile?.notificationChannel ?? "whatsapp";
     setTriggering(true);
     setTriggerResult(null);
     try {
-      const { sent } = await triggerReminders();
+      const { sent } = await triggerReminders(channel);
       setTriggerResult({
         variant: "success",
         message:
@@ -69,11 +86,51 @@ export function ProfileTab() {
     } catch {
       setTriggerResult({
         variant: "error",
-        message: "Gagal memicu reminder. Pastikan whatsapp-service aktif.",
+        message: `Gagal memicu reminder. Pastikan ${channel}-service aktif.`,
       });
     } finally {
       setTriggering(false);
     }
+  }
+
+  async function handleSwitchChannel(channel: NotificationChannel) {
+    if (!phone || !profile || channel === profile.notificationChannel) return;
+
+    if (channel === "telegram" && !profile.telegramChatId) {
+      setChannelResult({
+        variant: "error",
+        message: `Link akun Telegram dulu: buka @${TELEGRAM_BOT_USERNAME} di Telegram, kirim /start, lalu bagikan nomor teleponmu.`,
+      });
+      return;
+    }
+
+    setSwitchingChannel(true);
+    setChannelResult(null);
+    try {
+      const updated = await setNotificationChannel(phone, channel);
+      setProfile(updated);
+      setChannelResult({
+        variant: "success",
+        message:
+          channel === "telegram"
+            ? "Reminder & quick consult sekarang lewat Telegram."
+            : "Reminder & quick consult sekarang lewat WhatsApp.",
+      });
+    } catch (error) {
+      setChannelResult({
+        variant: "error",
+        message:
+          error instanceof ApiError && error.code === "PRECONDITION_FAILED"
+            ? error.message
+            : "Gagal beralih channel. Coba lagi sebentar lagi.",
+      });
+    } finally {
+      setSwitchingChannel(false);
+    }
+  }
+
+  function handleOpenTelegramBot() {
+    void Linking.openURL(`https://t.me/${TELEGRAM_BOT_USERNAME}`);
   }
 
   useEffect(() => {
@@ -143,6 +200,58 @@ export function ProfileTab() {
             />
           </View>
         )}
+
+        {profile ? (
+          <View className="rounded-2xl border px-4 py-4" style={{ borderColor: "#CBD5E1", gap: 12 }}>
+            <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.5 }}>
+              Channel Notifikasi
+            </Text>
+            <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+              Reminder cicilan & jawaban /cek dikirim lewat channel yang aktif. Deteksi teror
+              pinjol tetap lewat WhatsApp berapa pun channel yang dipilih di sini.
+            </Text>
+
+            <View className="flex-row" style={{ gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <SecondaryButton
+                  label={profile.notificationChannel === "whatsapp" ? "✓ WhatsApp" : "Pakai WhatsApp"}
+                  onPress={() => handleSwitchChannel("whatsapp")}
+                  disabled={switchingChannel || profile.notificationChannel === "whatsapp"}
+                  testID="channel-whatsapp-button"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <SecondaryButton
+                  label={profile.notificationChannel === "telegram" ? "✓ Telegram" : "Pakai Telegram"}
+                  onPress={() => handleSwitchChannel("telegram")}
+                  disabled={switchingChannel || profile.notificationChannel === "telegram"}
+                  testID="channel-telegram-button"
+                />
+              </View>
+            </View>
+
+            {!profile.telegramChatId ? (
+              <View className="flex-row items-center" style={{ gap: 8 }}>
+                <Send color={colors.secondary} size={16} />
+                <Text
+                  className="flex-1 font-body text-xs text-secondary"
+                  onPress={handleOpenTelegramBot}
+                  style={{ textDecorationLine: "underline" }}
+                >
+                  Belum link Telegram — buka @{TELEGRAM_BOT_USERNAME} dan kirim /start
+                </Text>
+              </View>
+            ) : null}
+
+            {channelResult ? (
+              <StatusToast
+                message={channelResult.message}
+                variant={channelResult.variant === "success" ? "success" : "error"}
+                onDismiss={() => setChannelResult(null)}
+              />
+            ) : null}
+          </View>
+        ) : null}
 
         <View className="rounded-2xl border px-4 py-4" style={{ borderColor: "#CBD5E1", gap: 12 }}>
           <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.5 }}>
