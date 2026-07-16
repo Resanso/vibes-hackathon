@@ -6,7 +6,7 @@ import { backend } from "../api/backendClient.js";
 const USAGE = [
   "Format: /cek <nominal> <bunga%/tahun> <biaya> <tenor bulan>",
   "Contoh: /cek 3000000 24 50000 6",
-  "(Pastikan kamu sudah punya profil di aplikasi FinSafe dulu.)",
+  "(Pastikan kamu sudah punya profil di aplikasi Nera dulu.)",
 ].join("\n");
 
 function jidToPhone(jid: string): string {
@@ -92,7 +92,7 @@ export async function handleIncomingMessage(
       const isNotFound =
         error instanceof TRPCClientError && error.data?.code === "NOT_FOUND";
       const message = isNotFound
-        ? "Profil kamu belum terdaftar. Isi dulu data di aplikasi FinSafe sebelum /cek di WhatsApp."
+        ? "Profil kamu belum terdaftar. Isi dulu data di aplikasi Nera sebelum /cek di WhatsApp."
         : "Gagal memproses permintaan. Coba lagi sebentar lagi.";
       await sock.sendMessage(jid, { text: message });
     }

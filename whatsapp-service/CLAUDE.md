@@ -1,18 +1,32 @@
 # CLAUDE.md — whatsapp-service
 
-Companion service: push reminders for upcoming loan installments, and an
-on-demand "quick consult" that re-runs a risk check over WhatsApp. A
-differentiator, not core to the demo — acceptable to fall back to a recorded
-clip if time runs out (see root `CLAUDE.md` MVP priority).
+Companion service with **two distinct roles**, running as one process but as
+separate Baileys sessions:
+
+1. **Nera bot number** — push reminders for upcoming loan installments, and an
+   on-demand "quick consult" that re-runs a risk check over WhatsApp.
+2. **Linked personal numbers** — a student can link their own WhatsApp number
+   (paired like WhatsApp Web) purely so incoming pinjol threats can be
+   auto-detected. Detected messages are saved as evidence, then the chat is
+   archived.
+
+A differentiator, not core to the demo — acceptable to fall back to a
+recorded clip if time runs out (see root `CLAUDE.md` MVP priority).
 
 ## Stack
 
 - Node.js (TypeScript, ESM) + **`baileys`** — note: the package is now
-  published unscoped as `baileys`, **not** `@whiskeysockets/baileys`. Current
-  major is 7.0.0, requires Node 17+.
+  published unscoped as `baileys`, **not** `@whiskeysockets/baileys`. No
+  stable 7.x exists yet as of this writing (`npm view baileys dist-tags`
+  shows `latest: 7.0.0-rc13`, `legacy: 6.7.23`) — pinned to the exact
+  `7.0.0-rc13` release rather than a `^7.0.0` range, which fails to resolve.
 - Own `prisma/schema.prisma` + own `DATABASE_URL` — infra-only, see below.
 - `node-cron` for the daily reminder check, `pino` for logging (Baileys'
   expected logger), `qrcode-terminal` to render the login QR code.
+- `onnxruntime-node` running `models/threat_detection.onnx` (copied from
+  `../notebook/threat_detection.onnx`, source of truth stays in the
+  notebook) for the linked-number threat detection — see "Threat detection
+  model" below.
 - Calls `backend`'s tRPC HTTP endpoints via `@trpc/client`'s
   `createTRPCUntypedClient` (no shared `AppRouter` type — `backend` and
   `whatsapp-service` are separate npm projects, no workspace tooling — so
@@ -20,20 +34,87 @@ clip if time runs out (see root `CLAUDE.md` MVP priority).
   `backend`'s routers by hand).
 - Run under PM2 on the same VPS as `backend` (see `../docs/deployment.md`).
 
+## Multi-session architecture
+
+`src/connection.ts` exposes a generic `startSession(prisma, sessionId,
+handlers)` — this service runs more than one Baileys connection at once:
+
+- `BOT_SESSION_ID` (`"bot"`) — the Nera bot's own number. `index.ts` starts
+  this one unconditionally and registers `handleIncomingMessage` (quick
+  consult) as its `onMessages` handler.
+- `student:<phone>` (see `src/personal/linkedNumbers.ts`'s
+  `studentSessionId()`) — one per linked student. `index.ts` resumes every
+  row in the `LinkedNumber` table with status `pending`/`connected` on boot
+  by calling `linkPersonalNumber()` again (idempotent — `upsertLinkedNumber`
+  no-ops on an existing row).
+
+`getActiveSocket(sessionId)` is how any code (the reminder scheduler, in
+particular) looks up "whatever socket is currently connected for this
+session" — reconnects replace the socket instance, so this must be looked up
+at send-time, never cached.
+
+### Linking a student's personal number
+
+Pairing (the QR scan) is a manual, one-time step per student — run:
+
+```
+npm run link:number -- <phone, no leading + or 0>
+```
+
+This calls `linkPersonalNumber()` (`src/personal/linkPersonalNumber.ts`),
+which upserts a `LinkedNumber` row and starts its session with
+`createThreatMonitorHandler()` (`src/personal/threatMonitor.ts`) as the
+`onMessages` handler. `onConnected`/`onLoggedOut` keep `LinkedNumber.status`
+in sync so `index.ts` knows what to resume on the next restart.
+
+### Threat detection model
+
+`src/threat/detectThreat.ts` loads `models/threat_detection.onnx` — a
+TF-IDF + RandomForest classifier trained on **synthetic** pinjol
+threat/normal message data (see `../notebook/threat-synthetic.ipynb`),
+exported with `skl2onnx`. Labels: `Normal_Formal` | `Normal_Informal` |
+`Threat`. Input/output tensor names (`text_input` / `output_label`) come
+from that notebook's own inference test, not guessed.
+
+**Known issue, not yet fixed**: the model has a second output,
+`output_probability` (a `Sequence<Map<string,float>>`), which
+`onnxruntime-node` currently can't deserialize ("Non tensor type is
+temporarily not supported"). `session.run()` fetches all outputs by
+default, so calling `detectThreat()` as currently written will throw. Fix by
+passing an explicit fetch list — `session.run({ text_input }, ["output_label"])`
+— to skip `output_probability` entirely. Deliberately left unfixed for now;
+the WhatsApp-side integration (session wiring, evidence-then-archive
+ordering, resume-on-boot) was the priority, not the model itself.
+
+Because it's trained on synthetic data, treat a `"Threat"` label as "worth
+flagging for human review," not ground truth — the notebook's own test case
+shows it can miss informally-worded threats.
+
 ## Session storage — DB-backed, not file-based
 
 Baileys' own `useMultiFileAuthState` (the common demo pattern) is explicitly
 flagged **"DO NOT USE IN PROD"** by the library's current docs. This project
 uses `src/auth/dbAuthState.ts` instead: a custom `AuthenticationState`
 implementation backed by Postgres via Prisma (`WhatsappCreds` +
-`WhatsappSignalKey` models), mirroring `useMultiFileAuthState`'s shape but
-persisting through the database.
+`WhatsappSignalKey` models, both keyed by `sessionId` now — one row set per
+Baileys session, not a single global row), mirroring
+`useMultiFileAuthState`'s shape but persisting through the database.
 
 **This is an exception to the "no direct database access" rule below** — it's
 infra state for the WhatsApp connection itself (session credentials, signal
 keys), not business data. It's fine for this service to read/write its own
-`WhatsappCreds`/`WhatsappSignalKey` tables directly. Everything else —
-profiles, risk entries, reminders data — always goes through `backend`'s API.
+`WhatsappCreds`/`WhatsappSignalKey`/`LinkedNumber`/`ThreatEvidence` tables
+directly. Everything else — profiles, risk entries, reminders data — always
+goes through `backend`'s API.
+
+## Evidence trail (`ThreatEvidence`)
+
+`createThreatMonitorHandler()` writes a `ThreatEvidence` row **before**
+calling `sock.chatModify({ archive: true, ... }, jid)` — evidence has to land
+first so proof survives even though the archive call makes the chat
+disappear from the student's main WhatsApp inbox. `chatArchived` on that row
+is only flipped to `true` after the archive call actually succeeds, so a
+failed archive still leaves a queryable trail of what was detected.
 
 ## Responsibilities
 
@@ -64,14 +145,14 @@ profiles, risk entries, reminders data — always goes through `backend`'s API.
   `lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut` to
   decide reconnect vs. requiring a fresh QR/pairing login.
   `DisconnectReason.restartRequired` (fires right after a QR scan) is handled
-  the same way — `startConnection()` always builds a brand-new socket
-  instance, never reconnects an old one in place.
+  the same way — `startSession()` always builds a brand-new socket instance
+  for that `sessionId`, never reconnects an old one in place.
 - The reminder scheduler is registered **once**, in `index.ts` — it looks up
-  whatever socket is currently active at send-time
-  (`connection.ts`'s `getActiveSocket()`) rather than closing over one
-  instance, since reconnects replace the socket. Do not call
-  `scheduleReminders()` from inside `startConnection()` — that would
-  re-register the cron job on every reconnect.
+  whatever socket is currently active for `BOT_SESSION_ID` at send-time
+  (`connection.ts`'s `getActiveSocket(sessionId)`) rather than closing over
+  one instance, since reconnects replace the socket. Do not call
+  `scheduleReminders()` from inside `startSession()` — that would re-register
+  the cron job on every reconnect.
 
 ## Gotchas
 
@@ -84,11 +165,16 @@ profiles, risk entries, reminders data — always goes through `backend`'s API.
   session credentials.
 - First run requires scanning a QR code (printed to the terminal via
   `qrcode-terminal`) with a real phone — this can't be automated or verified
-  by an agent; it's a manual one-time step per deployment (session then
-  persists in `WhatsappCreds`/`WhatsappSignalKey` across restarts).
+  by an agent; it's a manual one-time step per session (bot, and each linked
+  student number) — session then persists in
+  `WhatsappCreds`/`WhatsappSignalKey` (keyed by that session's `sessionId`)
+  across restarts.
 - If logged out (`DisconnectReason.loggedOut`), the stored session is dead —
-  delete the `WhatsappCreds`/`WhatsappSignalKey` rows and re-pair with a new
-  QR scan rather than trying to reconnect with stale credentials.
+  delete that `sessionId`'s `WhatsappCreds`/`WhatsappSignalKey` rows and
+  re-pair with a new QR scan rather than trying to reconnect with stale
+  credentials. For a linked student number, also check `LinkedNumber.status`
+  — it's set to `"logged_out"` automatically via `onLoggedOut`, so `index.ts`
+  won't try to auto-resume it on the next restart until it's re-paired.
 
 ## Git workflow
 

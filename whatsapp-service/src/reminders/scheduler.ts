@@ -4,7 +4,7 @@ import type { Logger } from "pino";
 
 import { backend } from "../api/backendClient.js";
 import { env } from "../env.js";
-import { getActiveSocket, logger as defaultLogger } from "../connection.js";
+import { BOT_SESSION_ID, getActiveSocket, logger as defaultLogger } from "../connection.js";
 
 function formatRupiah(amount: number): string {
   return `Rp${amount.toLocaleString("id-ID")}`;
@@ -57,7 +57,7 @@ export async function sendDueReminders(
 // instance, since reconnects in connection.ts replace it.
 export function scheduleReminders(): void {
   cron.schedule(env.REMINDER_CRON, () => {
-    const sock = getActiveSocket();
+    const sock = getActiveSocket(BOT_SESSION_ID);
     if (!sock) {
       defaultLogger.warn("Skipping reminder run — no active WhatsApp connection");
       return;
