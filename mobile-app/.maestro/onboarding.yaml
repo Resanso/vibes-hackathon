@@ -1,0 +1,13 @@
+appId: com.nera.app
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Nera"
+- assertVisible:
+    id: "onboarding-start-button"
+- tapOn:
+    id: "onboarding-phone-input"
+- inputText: "081234567890"
+- tapOn:
+    id: "onboarding-start-button"
+- assertVisible: "Cek Kondisi Keuanganmu"

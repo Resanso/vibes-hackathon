@@ -1,0 +1,25 @@
+# No deep link exists yet to reach this screen directly, so this flow
+# replays Onboarding first (same as onboarding.yaml) before testing this
+# screen's own elements.
+appId: com.nera.app
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "onboarding-phone-input"
+- inputText: "081234567890"
+- tapOn:
+    id: "onboarding-start-button"
+- assertVisible: "Cek Kondisi Keuanganmu"
+- assertVisible:
+    id: "fsc-submit-button"
+- tapOn:
+    id: "fsc-income-input"
+- inputText: "3000000"
+- tapOn:
+    id: "fsc-debt-input"
+- inputText: "200000"
+- assertVisible: "% dari pemasukanmu"
+- tapOn:
+    id: "fsc-submit-button"
+- assertVisible: "Profil kamu berhasil disimpan."
