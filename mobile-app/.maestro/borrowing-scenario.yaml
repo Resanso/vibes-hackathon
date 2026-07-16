@@ -1,5 +1,5 @@
 # No deep link exists yet to reach this screen directly, so this flow
-# replays Onboarding first (same as onboarding.yaml) before testing this
+# replays Onboarding + FinancialSurvivalCheck first before testing this
 # screen's own elements.
 appId: com.nera.app
 ---
@@ -11,16 +11,28 @@ appId: com.nera.app
 - tapOn:
     id: "onboarding-start-button"
 - assertVisible: "Cek Kondisi Keuanganmu"
-- assertVisible:
-    id: "fsc-submit-button"
 - tapOn:
     id: "fsc-income-input"
 - inputText: "3000000"
 - tapOn:
     id: "fsc-debt-input"
 - inputText: "200000"
-- assertVisible: "% dari pemasukanmu"
 - tapOn:
     id: "fsc-submit-button"
-- assertVisible: "Profil kamu berhasil disimpan."
 - assertVisible: "Ceritakan Pinjaman yang Kamu Pertimbangkan"
+- assertVisible:
+    id: "bs-submit-button"
+- tapOn:
+    id: "bs-principal-input"
+- inputText: "2000000"
+- tapOn:
+    id: "bs-interest-rate-input"
+- inputText: "12"
+- tapOn:
+    id: "bs-tenor-input"
+- inputText: "6"
+- assertVisible:
+    id: "bs-cost-preview"
+- tapOn:
+    id: "bs-submit-button"
+- assertVisible: "Analisis Risiko Pinjamanmu"

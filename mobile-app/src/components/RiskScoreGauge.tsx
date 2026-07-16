@@ -10,6 +10,7 @@ interface RiskScoreGaugeProps {
   label: string;
   level: RiskLevel;
   size?: number;
+  testID?: string;
 }
 
 const STROKE_WIDTH = 10;
@@ -20,7 +21,7 @@ const STROKE_WIDTH = 10;
 // component threshold-agnostic avoids a second, divergent copy of that logic.
 // High risk (`level="error"`) is the only case that gets colors.error — never
 // use red for every risk state, per ../../.claude/rules/design.md.
-export function RiskScoreGauge({ score, label, level, size = 120 }: RiskScoreGaugeProps) {
+export function RiskScoreGauge({ score, label, level, size = 120, testID }: RiskScoreGaugeProps) {
   const clampedScore = Math.max(0, Math.min(100, score));
   const radius = (size - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -28,7 +29,7 @@ export function RiskScoreGauge({ score, label, level, size = 120 }: RiskScoreGau
   const color = colors[level];
 
   return (
-    <View className="flex-row items-center gap-4" accessibilityRole="text">
+    <View className="flex-row items-center gap-4" accessibilityRole="text" testID={testID}>
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
           <Circle

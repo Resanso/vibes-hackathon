@@ -1,13 +1,33 @@
-import { useState } from "react";
-import { SafeAreaView, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  Keyboard,
+  SafeAreaView,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { PrimaryButton } from "../components/PrimaryButton";
 import { colors } from "../theme/colors";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useSessionStore } from "../store/sessionStore";
+import { loadDraft, saveDraft } from "../utils/formDraft";
+
+// Neutral UI-chrome gray for input borders — not part of the locked brand
+// palette in colors.ts (that table is brand intent colors only), just a
+// standard light border tone for a cleaner input look.
+const BORDER_GRAY = "#CBD5E1";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Onboarding">;
+
+interface Draft extends Record<string, string> {
+  name: string;
+  phone: string;
+}
+
+const DRAFT_KEY = "onboarding";
 
 // Signature element: two overlapping low-opacity rings, echoing the circular
 // motif RiskScoreGauge uses elsewhere — this product's visual fingerprint,
@@ -51,6 +71,18 @@ export function Onboarding({ navigation }: Props) {
   const [phone, setPhone] = useState("");
   const [phoneFocused, setPhoneFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
+  const phoneInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    loadDraft<Draft>(DRAFT_KEY).then((draft) => {
+      if (draft.name !== undefined) setName(draft.name);
+      if (draft.phone !== undefined) setPhone(draft.phone);
+    });
+  }, []);
+
+  useEffect(() => {
+    saveDraft<Draft>(DRAFT_KEY, { name, phone });
+  }, [name, phone]);
 
   const isPhoneValid = phone.trim().length >= 9;
 
@@ -62,6 +94,7 @@ export function Onboarding({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View className="flex-1 justify-between px-6 py-8">
         <View style={{ gap: 32 }}>
           <SignatureMark />
@@ -86,11 +119,13 @@ export function Onboarding({ navigation }: Props) {
                 onChangeText={setName}
                 placeholder="Nama kamu"
                 placeholderTextColor="#475569"
+                returnKeyType="next"
+                onSubmitEditing={() => phoneInputRef.current?.focus()}
                 onFocus={() => setNameFocused(true)}
                 onBlur={() => setNameFocused(false)}
-                className="rounded-2xl border-2 px-4 py-3 font-body text-neutral"
+                className="rounded-2xl border px-4 py-3 font-body text-neutral"
                 style={{
-                  borderColor: nameFocused ? colors.secondary : colors.neutral,
+                  borderColor: nameFocused ? colors.secondary : BORDER_GRAY,
                 }}
               />
             </View>
@@ -100,17 +135,20 @@ export function Onboarding({ navigation }: Props) {
                 Nomor WhatsApp
               </Text>
               <TextInput
+                ref={phoneInputRef}
                 testID="onboarding-phone-input"
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="08123456789"
                 placeholderTextColor="#475569"
                 keyboardType="phone-pad"
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
                 onFocus={() => setPhoneFocused(true)}
                 onBlur={() => setPhoneFocused(false)}
-                className="rounded-2xl border-2 px-4 py-3 font-body text-neutral"
+                className="rounded-2xl border px-4 py-3 font-body text-neutral"
                 style={{
-                  borderColor: phoneFocused ? colors.secondary : colors.neutral,
+                  borderColor: phoneFocused ? colors.secondary : BORDER_GRAY,
                 }}
               />
               <Text className="font-body text-xs" style={{ color: colors.neutral, opacity: 0.6 }}>
@@ -127,6 +165,7 @@ export function Onboarding({ navigation }: Props) {
           disabled={!isPhoneValid}
         />
       </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
