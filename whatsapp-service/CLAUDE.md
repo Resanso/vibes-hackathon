@@ -24,7 +24,7 @@ recorded clip if time runs out (see root `CLAUDE.md` MVP priority).
 - `node-cron` for the daily reminder check, `pino` for logging (Baileys'
   expected logger), `qrcode-terminal` to render the login QR code.
 - `onnxruntime-node` running `models/threat_detection.onnx` (copied from
-  `../notebook/threat_detection.onnx`, source of truth stays in the
+  `../notebook/model/threat_detection.onnx`, source of truth stays in the
   notebook) for the linked-number threat detection — see "Threat detection
   model" below.
 - Calls `backend`'s tRPC HTTP endpoints via `@trpc/client`'s

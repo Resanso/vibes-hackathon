@@ -5,6 +5,7 @@ import * as ort from "onnxruntime-node";
 
 // TF-IDF + RandomForest classifier trained on synthetic pinjol
 // threat/normal message data (see ../../../notebook/threat-synthetic.ipynb),
+// model file at ../../../notebook/model/threat_detection.onnx,
 // exported to ONNX. Input/output tensor names ("text_input" / "output_label")
 // come directly from that notebook's own inference test — not guessed.
 //
