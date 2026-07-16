@@ -41,13 +41,21 @@ export const remindersRouter = createTRPCRouter({
     }
 
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}) as { error?: string });
+      let errorMessage: string | undefined;
+      try {
+        const body = (await response.json()) as { error?: string };
+        errorMessage = body.error;
+      } catch {
+        errorMessage = undefined;
+      }
+
       throw new TRPCError({
         code: response.status === 503 ? "SERVICE_UNAVAILABLE" : "INTERNAL_SERVER_ERROR",
-        message: body.error ?? "Gagal memicu reminder.",
+        message: errorMessage ?? "Gagal memicu reminder.",
       });
     }
 
-    return (await response.json()) as { sent: number };
+    const result = (await response.json()) as { sent: number };
+    return result;
   }),
 });
