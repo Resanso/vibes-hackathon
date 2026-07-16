@@ -95,3 +95,49 @@ export interface UpsertProfileInput {
 export function upsertProfile(input: UpsertProfileInput): Promise<Profile> {
   return trpcMutation<Profile>("profile.upsert", input);
 }
+
+export interface AssessRiskInput {
+  phone: string;
+  principal: number;
+  interestRatePct: number;
+  serviceFee: number;
+  tenorMonths: number;
+}
+
+export type RiskLabel = "aman" | "waspada" | "bahaya";
+
+export interface RiskAssessment {
+  riskScore: number;
+  riskLabel: RiskLabel;
+  reasons: string[];
+  explanation: string;
+  monthlyInstallment: number;
+  totalRepayment: number;
+}
+
+export function assessRisk(input: AssessRiskInput): Promise<RiskAssessment> {
+  return trpcMutation<RiskAssessment>("risk.assess", input);
+}
+
+export interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+}
+
+export function listRecommendations(): Promise<Recommendation[]> {
+  return trpcQuery<Recommendation[]>("recommendations.list", undefined);
+}
+
+export interface TrendEntry {
+  createdAt: string; // ISO string, not revived to Date — see file header
+  riskScore: number;
+  riskLabel: RiskLabel;
+  principal: number;
+  monthlyInstallment: number;
+}
+
+export function getDashboardTrend(phone: string): Promise<TrendEntry[]> {
+  return trpcQuery<TrendEntry[]>("dashboard.trend", { phone });
+}

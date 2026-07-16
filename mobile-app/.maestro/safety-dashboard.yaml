@@ -1,0 +1,41 @@
+# No deep link exists yet to reach this screen directly, so this flow
+# replays the full flow up to it before testing this screen's own elements.
+appId: com.nera.app
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "onboarding-phone-input"
+- inputText: "081234567890"
+- tapOn:
+    id: "onboarding-start-button"
+- assertVisible: "Cek Kondisi Keuanganmu"
+- tapOn:
+    id: "fsc-income-input"
+- inputText: "3000000"
+- tapOn:
+    id: "fsc-debt-input"
+- inputText: "200000"
+- tapOn:
+    id: "fsc-submit-button"
+- assertVisible: "Ceritakan Pinjaman yang Kamu Pertimbangkan"
+- tapOn:
+    id: "bs-principal-input"
+- inputText: "2000000"
+- tapOn:
+    id: "bs-interest-rate-input"
+- inputText: "12"
+- tapOn:
+    id: "bs-tenor-input"
+- inputText: "6"
+- tapOn:
+    id: "bs-submit-button"
+- assertVisible: "Analisis Risiko Pinjamanmu"
+- tapOn:
+    id: "fri-see-alternatives-button"
+- assertVisible: "Alternatif yang Bisa Kamu Pertimbangkan"
+- tapOn:
+    id: "ds-see-dashboard-button"
+- assertVisible: "Dashboard Keamanan Finansialmu"
+- assertVisible:
+    id: "sd-trend-chart"

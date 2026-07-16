@@ -1,20 +1,35 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SafeAreaView, ScrollView, Text, TextInput, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { ApiError, upsertProfile } from "../api/client";
+import { BackButton } from "../components/BackButton";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { StatusToast } from "../components/StatusToast";
 import { colors } from "../theme/colors";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useSessionStore } from "../store/sessionStore";
+import { loadDraft, saveDraft } from "../utils/formDraft";
+
+// Neutral UI-chrome gray for input borders — not part of the locked brand
+// palette in colors.ts (that table is brand intent colors only), just a
+// standard light border tone for a cleaner input look.
+const BORDER_GRAY = "#CBD5E1";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FinancialSurvivalCheck">;
 
-const TOTAL_STEPS = 7;
+interface Draft extends Record<string, string> {
+  incomeText: string;
+  debtText: string;
+  dependentsText: string;
+}
+
+const DRAFT_KEY = "financial-survival-check";
+
+const TOTAL_STEPS = 5;
 const CURRENT_STEP = 2;
 
-// Real sequence — this is a fixed 7-step flow, so a step indicator is a
+// Real sequence — this is a fixed 5-step onboarding flow, so a step indicator is a
 // legitimate use of ordered markers (not the banned decorative 01/02/03).
 function StepIndicator() {
   return (
@@ -43,7 +58,7 @@ function formatRupiah(amount: number): string {
   return `Rp${amount.toLocaleString("id-ID")}`;
 }
 
-export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
+export function FinancialSurvivalCheck({ navigation }: Props) {
   const phone = useSessionStore((state) => state.phone);
 
   const [incomeText, setIncomeText] = useState("");
@@ -56,6 +71,18 @@ export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
   const [toast, setToast] = useState<{ variant: "success" | "error"; message: string } | null>(
     null,
   );
+
+  useEffect(() => {
+    loadDraft<Draft>(DRAFT_KEY).then((draft) => {
+      if (draft.incomeText !== undefined) setIncomeText(draft.incomeText);
+      if (draft.debtText !== undefined) setDebtText(draft.debtText);
+      if (draft.dependentsText !== undefined) setDependentsText(draft.dependentsText);
+    });
+  }, []);
+
+  useEffect(() => {
+    saveDraft<Draft>(DRAFT_KEY, { incomeText, debtText, dependentsText });
+  }, [incomeText, debtText, dependentsText]);
 
   const income = parseAmount(incomeText);
   const debt = parseAmount(debtText);
@@ -77,6 +104,9 @@ export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
         dependents,
       });
       setToast({ variant: "success", message: "Profil kamu berhasil disimpan." });
+      // Brief pause so the confirmation is actually visible before moving on,
+      // instead of navigating away the instant the toast appears.
+      setTimeout(() => navigation.navigate("BorrowingScenario"), 900);
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -96,6 +126,10 @@ export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ gap: 12 }}>
+          <BackButton
+            testID="fsc-back-button"
+            onPress={() => navigation.goBack()}
+          />
           <StepIndicator />
           <Text className="font-body text-xs" style={{ color: colors.neutral, opacity: 0.6 }}>
             Langkah {CURRENT_STEP} dari {TOTAL_STEPS}
@@ -126,9 +160,9 @@ export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
               keyboardType="number-pad"
               onFocus={() => setFocusedField("income")}
               onBlur={() => setFocusedField(null)}
-              className="rounded-2xl border-2 px-4 py-3 font-body text-neutral"
+              className="rounded-2xl border px-4 py-3 font-body text-neutral"
               style={{
-                borderColor: focusedField === "income" ? colors.secondary : colors.neutral,
+                borderColor: focusedField === "income" ? colors.secondary : BORDER_GRAY,
               }}
             />
           </View>
@@ -146,9 +180,9 @@ export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
               keyboardType="number-pad"
               onFocus={() => setFocusedField("debt")}
               onBlur={() => setFocusedField(null)}
-              className="rounded-2xl border-2 px-4 py-3 font-body text-neutral"
+              className="rounded-2xl border px-4 py-3 font-body text-neutral"
               style={{
-                borderColor: focusedField === "debt" ? colors.secondary : colors.neutral,
+                borderColor: focusedField === "debt" ? colors.secondary : BORDER_GRAY,
               }}
             />
             {debtRatioPct !== null ? (
@@ -171,9 +205,9 @@ export function FinancialSurvivalCheck({ navigation: _navigation }: Props) {
               keyboardType="number-pad"
               onFocus={() => setFocusedField("dependents")}
               onBlur={() => setFocusedField(null)}
-              className="rounded-2xl border-2 px-4 py-3 font-body text-neutral"
+              className="rounded-2xl border px-4 py-3 font-body text-neutral"
               style={{
-                borderColor: focusedField === "dependents" ? colors.secondary : colors.neutral,
+                borderColor: focusedField === "dependents" ? colors.secondary : BORDER_GRAY,
               }}
             />
           </View>
