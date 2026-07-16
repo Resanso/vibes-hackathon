@@ -1,0 +1,26 @@
+// Own Prisma project for whatsapp-service — infra state for the Baileys
+// WhatsApp connection only (session credentials + signal keys), not domain
+// business data. Business data always comes from `backend` over the API.
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model WhatsappCreds {
+    id   Int  @id @default(1)
+    data Json
+}
+
+model WhatsappSignalKey {
+    category String
+    id       String
+    data     Json
+
+    @@id([category, id])
+}
