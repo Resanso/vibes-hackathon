@@ -1,4 +1,4 @@
-import type { PrismaClient } from "../../generated/prisma/index.js";
+import type { Prisma, PrismaClient } from "../../generated/prisma/index.js";
 import {
   BufferJSON,
   initAuthCreds,
@@ -15,22 +15,27 @@ import {
 // design. Only WhatsappCreds/WhatsappSignalKey are touched here: infra state
 // for the connection itself, never business data (that always goes through
 // backend's API).
-const CREDS_ROW_ID = 1;
-
-function serialize(value: unknown): unknown {
-  return JSON.parse(JSON.stringify(value, BufferJSON.replacer));
+//
+// Keyed by `sessionId` because this service runs more than one Baileys
+// connection: the Nera bot's own number, and one per student who links their
+// personal number for teror-detection monitoring.
+function serialize(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value, BufferJSON.replacer)) as Prisma.InputJsonValue;
 }
 
 function deserialize<T>(value: unknown): T {
   return JSON.parse(JSON.stringify(value), BufferJSON.reviver) as T;
 }
 
-export async function useDbAuthState(prisma: PrismaClient): Promise<{
+export async function useDbAuthState(
+  prisma: PrismaClient,
+  sessionId: string,
+): Promise<{
   state: AuthenticationState;
   saveCreds: () => Promise<void>;
 }> {
   const credsRow = await prisma.whatsappCreds.findUnique({
-    where: { id: CREDS_ROW_ID },
+    where: { sessionId },
   });
 
   const creds: AuthenticationCreds = credsRow
@@ -47,7 +52,7 @@ export async function useDbAuthState(prisma: PrismaClient): Promise<{
           await Promise.all(
             ids.map(async (id) => {
               const row = await prisma.whatsappSignalKey.findUnique({
-                where: { category_id: { category: type, id } },
+                where: { sessionId_category_id: { sessionId, category: type, id } },
               });
 
               if (!row) return;
@@ -56,7 +61,7 @@ export async function useDbAuthState(prisma: PrismaClient): Promise<{
               if (type === "app-state-sync-key" && value) {
                 value = proto.Message.AppStateSyncKeyData.fromObject(
                   value as object,
-                ) as SignalDataTypeMap[typeof type];
+                ) as unknown as SignalDataTypeMap[typeof type];
               }
               data[id] = value;
             }),
@@ -73,17 +78,17 @@ export async function useDbAuthState(prisma: PrismaClient): Promise<{
 
             for (const id of Object.keys(categoryData)) {
               const value = categoryData[id];
-              const key = { category, id };
+              const key = { sessionId, category, id };
 
               tasks.push(
                 value
                   ? prisma.whatsappSignalKey.upsert({
-                      where: { category_id: key },
+                      where: { sessionId_category_id: key },
                       create: { ...key, data: serialize(value) },
                       update: { data: serialize(value) },
                     })
                   : prisma.whatsappSignalKey
-                      .delete({ where: { category_id: key } })
+                      .delete({ where: { sessionId_category_id: key } })
                       .catch(() => undefined),
               );
             }
@@ -95,8 +100,8 @@ export async function useDbAuthState(prisma: PrismaClient): Promise<{
     },
     saveCreds: async () => {
       await prisma.whatsappCreds.upsert({
-        where: { id: CREDS_ROW_ID },
-        create: { id: CREDS_ROW_ID, data: serialize(creds) },
+        where: { sessionId },
+        create: { sessionId, data: serialize(creds) },
         update: { data: serialize(creds) },
       });
     },

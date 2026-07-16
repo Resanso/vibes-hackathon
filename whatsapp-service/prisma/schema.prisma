@@ -1,6 +1,7 @@
 // Own Prisma project for whatsapp-service — infra state for the Baileys
-// WhatsApp connection only (session credentials + signal keys), not domain
-// business data. Business data always comes from `backend` over the API.
+// WhatsApp connection(s) only (session credentials + signal keys), plus the
+// threat-evidence trail described below. Everything else (profiles, risk
+// entries, reminders data) always comes from `backend` over the API.
 
 generator client {
     provider = "prisma-client-js"
@@ -12,15 +13,52 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
+// Keyed by sessionId, not a fixed row — this service runs more than one
+// Baileys connection: the Nera bot's own number ("bot"), and one session per
+// student who links their personal number for teror-detection monitoring
+// (sessionId = `student:<phone>`).
 model WhatsappCreds {
-    id   Int  @id @default(1)
-    data Json
+    sessionId String @id
+    data      Json
 }
 
 model WhatsappSignalKey {
-    category String
-    id       String
-    data     Json
+    sessionId String
+    category  String
+    id        String
+    data      Json
 
-    @@id([category, id])
+    @@id([sessionId, category, id])
+}
+
+// A student's personal WhatsApp number, linked (paired like WhatsApp Web) so
+// incoming pinjol threats can be auto-detected and archived. The student
+// initiates this pairing themselves from mobile-app — never silently — per
+// the privacy principle in .claude/rules/product-context.md.
+model LinkedNumber {
+    id        String   @id @default(cuid())
+    sessionId String   @unique
+    phone     String   @unique
+    status    String   @default("pending") // pending (awaiting QR scan) | connected | logged_out
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    evidences ThreatEvidence[]
+}
+
+// Evidence trail: every message the threat-detection model flags against a
+// linked student's personal WhatsApp, saved BEFORE the chat is archived — so
+// proof survives even though Baileys' chatModify makes the chat disappear
+// from the student's main inbox.
+model ThreatEvidence {
+    id             String   @id @default(cuid())
+    linkedNumberId String
+    linkedNumber   LinkedNumber @relation(fields: [linkedNumberId], references: [id])
+    fromJid        String
+    messageText    String
+    label          String
+    chatArchived   Boolean  @default(false)
+    createdAt      DateTime @default(now())
+
+    @@index([linkedNumberId])
 }
