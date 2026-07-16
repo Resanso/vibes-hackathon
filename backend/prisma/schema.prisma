@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Profile {
+    phone               String   @id
+    monthlyIncome       Int
+    existingMonthlyDebt Int      @default(0)
+    dependents          Int      @default(0)
+    createdAt           DateTime @default(now())
+    updatedAt           DateTime @updatedAt
+
+    riskEntries RiskEntry[]
+}
+
+model RiskEntry {
+    id      String  @id @default(cuid())
+    phone   String
+    profile Profile @relation(fields: [phone], references: [phone])
+
+    principal       Int
+    interestRatePct Float
+    serviceFee      Int
+    tenorMonths     Int
+
+    monthlyInstallment Int
+    totalRepayment     Int
+    riskScore          Int
+    riskLabel          String
+    explanation        String?
+
+    // First installment due date (createdAt + 1 calendar month). Due dates
+    // for installment N are derived as firstDueDate + (N-1) months, not
+    // stored per-installment — there's no payment-tracking feature, so this
+    // only ever answers "is an installment date coming up," never "was it paid."
+    firstDueDate DateTime
+
+    createdAt DateTime @default(now())
+
+    @@index([phone, createdAt])
+}

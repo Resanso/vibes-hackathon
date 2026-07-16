@@ -11,6 +11,9 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    SHARED_API_KEY: z.string().min(1),
+    MAIA_API_KEY: z.string().optional(),
+    MAIA_BASE_URL: z.string().url().optional(),
   },
 
   /**
@@ -29,6 +32,9 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    SHARED_API_KEY: process.env.SHARED_API_KEY,
+    MAIA_API_KEY: process.env.MAIA_API_KEY,
+    MAIA_BASE_URL: process.env.MAIA_BASE_URL,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

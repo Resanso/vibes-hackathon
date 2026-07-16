@@ -2,8 +2,10 @@
 
 Berlaku untuk semua sub-project UI di repo ini (web, mobile, dsb). Implementasi teknis
 per-platform (nama token CSS/StyleSheet/ThemeData, cara pakai di komponen) ada di
-`.claude/rules/design.md` masing-masing sub-project — misalnya `web-app/.claude/rules/design.md`
-untuk Tailwind v4. File ini hanya berisi prinsip yang tidak berubah lintas platform.
+`.claude/rules/design.md` masing-masing sub-project — misalnya
+`mobile-app/.claude/rules/design.md` untuk NativeWind (belum ada, dibuat saat mobile-app
+mulai punya screen). `backend` API-only, jadi tidak punya rules desain sendiri. File ini
+hanya berisi prinsip yang tidak berubah lintas platform.
 
 ## Hindari default AI-generated look
 
@@ -32,6 +34,47 @@ aturan teknis di sub-project masing-masing.
 Setelah token plan ditulis, review sendiri sebelum coding: kalau ada bagian yang
 terasa seperti jawaban generik untuk brief serupa apapun (bukan pilihan yang
 spesifik ke produk ini), revisi dan sebutkan apa yang diubah dan kenapa.
+
+## Brand tokens (locked)
+
+Nera (`mobile-app`) has a **final** brand identity — colors and typography
+below are locked, not a starting point. The "Token plan sebelum coding" step
+above no longer means re-deriving color/font choices for `mobile-app`; what's
+still open per screen is only the **layout concept** and **signature
+element**. Canonical files: `mobile-app/src/theme/colors.ts` +
+`typography.ts` (raw values, for non-className consumers like SVG props) and
+`mobile-app/tailwind.config.js` (className-based styling — `bg-primary`,
+`font-display text-display`, etc.) — both hard-code the same values and must
+stay in sync; see the comments in those files for why they aren't derived
+from one shared source.
+
+**Colors:**
+
+| Name | Hex | Intent |
+| --- | --- | --- |
+| primary | `#6C5CE7` | primary actions, brand accent |
+| secondary | `#4EA8FF` | secondary accent, focus rings |
+| success | `#22C55E` | low-risk / positive status |
+| warning | `#FBBF24` | medium-risk / caution status |
+| error | `#EF4444` | high-risk status only — never the default for every risk state, see the "Kalau brand/produk belum ditentukan" tone note and `product-context.md`'s privacy/tone principle |
+| neutral | `#0F172A` | body text, borders, dark UI elements |
+
+**Typography** — Poppins, one weight per role (loaded via
+`@expo-google-fonts/poppins`, each weight is its own font family name in
+React Native, not a `fontWeight` value):
+
+| Role | Weight | Size | Used for |
+| --- | --- | --- | --- |
+| display (H1) | Poppins Bold | 32px | main headline per screen |
+| heading (H2) | Poppins SemiBold | 24px | sub-section headings |
+| body | Poppins Regular | 16px | regular content text |
+
+**Icons**: outline/line style, rounded stroke — `lucide-react-native` (its
+icons are outline by default, no filled variant to accidentally pick).
+
+Reusable components already built to these tokens: `PrimaryButton`,
+`SecondaryButton`, `RiskScoreGauge`, `StatusToast` in
+`mobile-app/src/components/`.
 
 ## Banned patterns
 

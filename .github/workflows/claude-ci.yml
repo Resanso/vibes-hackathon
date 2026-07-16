@@ -13,13 +13,13 @@ on:
     types: [opened, edited]
 
 jobs:
-  check-web-app:
-    name: web-app / lint & typecheck
+  check-backend:
+    name: backend / lint & typecheck
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: web-app
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: web-app/package-lock.json
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -35,11 +35,11 @@ jobs:
       - name: Lint + typecheck
         run: npm run check
 
-      # No test script exists in web-app/package.json yet. Once a test runner
+      # No test script exists in backend/package.json yet. Once a test runner
       # is added (e.g. `npm run test`), add a step here to run it in CI.
 
   # Add one check-<sub-project> job per sub-project as they're created
-  # (e.g. check-mobile-app, check-backend-service), each scoped with its own
+  # (e.g. check-mobile-app, check-whatsapp-service), each scoped with its own
   # `working-directory` so unrelated sub-projects don't block each other.
 
   claude-review:

@@ -6,10 +6,11 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { env } from "~/env";
 import { db } from "~/server/db";
 
 /**
@@ -104,3 +105,22 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+/**
+ * Shared-API-key procedure
+ *
+ * `mobile-app` and `whatsapp-service` are the only expected callers — both
+ * send the shared secret as the `x-api-key` header. There's no per-user auth
+ * for the hackathon, just this one shared secret gating every domain router.
+ */
+const apiKeyMiddleware = t.middleware(({ ctx, next }) => {
+  const apiKey = ctx.headers.get("x-api-key");
+
+  if (apiKey !== env.SHARED_API_KEY) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  return next();
+});
+
+export const apiKeyProcedure = publicProcedure.use(apiKeyMiddleware);

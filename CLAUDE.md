@@ -1,69 +1,63 @@
-# CLAUDE.md (shared, root)
+# FinSafe — Financial Safety Intelligence Platform
 
-Guidance that applies across **every** sub-project in this monorepo. Each sub-project
-also has its own `CLAUDE.md` with stack-specific detail — read both; the sub-project
-file wins on anything stack-specific, this file wins on process/workflow.
+Guidance for Claude Code across this monorepo. Read this first in every session,
+then read the `CLAUDE.md` inside whichever subfolder you're working in.
 
-## Repo shape
+## What this product is
 
-This is a **monorepo**: one git repo, multiple independent sub-projects, each with its
-own `package.json`/lockfile/dependencies (no shared workspace tooling unless a
-`packages/shared/` folder is explicitly introduced later).
+FinSafe helps Indonesian university students make safer financial decisions across
+their entire borrowing journey. Full product rationale (HMW questions, the 7-step
+flow, privacy principle) lives in `.claude/rules/product-context.md`.
 
-```
-vibes-hackathon/
-├── CLAUDE.md              ← this file, shared across all sub-projects
-├── .claude/
-│   ├── settings.json      ← shared hooks/permissions (auto-detects sub-projects)
-│   ├── rules/design.md    ← design PRINCIPLES, platform-agnostic
-│   └── skills/            ← workflows shared across sub-projects
-├── web-app/                ← Next.js/tRPC/Prisma web app (see web-app/CLAUDE.md)
-│   └── .claude/rules/design.md  ← Tailwind v4 technical implementation
-├── mobile-app/              ← not created yet — illustrative only, do not scaffold
-│   └── ...                    unless explicitly asked
-└── backend-service/         ← not created yet — illustrative only, do not scaffold
-    └── ...                    unless explicitly asked
-```
+Built for Garuda Hacks 7.0, Track 2 (Safety).
 
-**Currently only `web-app/` exists.** Other sub-project folders shown above (mobile
-app, backend service) are purely illustrative of the intended repo shape — do not
-create them unless the user explicitly asks for a new sub-project. Folder names for
-future sub-projects aren't fixed; match whatever naming the user actually sets up.
+## Monorepo structure
+root/
+├── backend/           Next.js (API-only, no pages) + tRPC + Prisma — the single
+│                      API mobile-app and whatsapp-service both call
+├── mobile-app/        React Native — the ONLY frontend. All 7 user-flow steps,
+│                      including the personal Financial Safety Dashboard (step 6)
+└── whatsapp-service/  Node.js + Baileys — companion: reminders, quick consult
+There is no separate web dashboard / institutional portal — dropped from scope.
+If a "dashboard" feature is requested, it means step 6 inside `mobile-app`, not a
+new surface.
 
-## Working across sub-projects
+## MVP priority for hackathon
 
-- Each sub-project is self-contained: its own `package.json`, its own lockfile, its
-  own `node_modules`. Run commands from inside that sub-project's directory (or via
-  `npm --prefix <dir>` from the root) — don't assume a root `package.json` exists.
-- Don't introduce a root-level workspace (npm/pnpm workspaces) unless there's actual
-  code to share between sub-projects (e.g. a Zod schema used by both a web client and
-  a mobile client). If that need shows up, propose a `packages/shared/` folder instead
-  of quietly restructuring things.
-- Stack-specific commands, architecture, and conventions live in each sub-project's own
-  `CLAUDE.md` (e.g. `web-app/CLAUDE.md`) — check there before assuming a command from
-  one sub-project works in another.
+1. **backend** — the logic has to exist somewhere; both clients depend on it.
+2. **mobile-app** — the surface judges actually interact with during the demo.
+3. **whatsapp-service** — good differentiator, acceptable as a recorded clip if
+   time runs out (see its CLAUDE.md for why).
+
+## Tech stack summary
+
+| Layer | Stack |
+|---|---|
+| Backend/API | Next.js 15 (App Router) used API-only — no dashboard pages — + tRPC + Prisma |
+| Mobile | React Native (Expo) — the only user-facing surface |
+| WhatsApp | Node.js + Baileys (`@whiskeysockets/baileys`) |
+| Database | PostgreSQL, self-hosted via Docker on our VPS |
+| AI layer | MAIA Router (OpenAI-compatible gateway) — coaching narrative/explanations only; risk *scoring* is deterministic, see `backend/CLAUDE.md` |
+| Infra | Our own VPS — Nginx + PM2 (backend, whatsapp-service) + Docker (Postgres only) |
+
+See `docs/deployment.md` for VPS setup.
 
 ## Git workflow (monorepo)
 
-- Branch naming: `feature/<area>-<slug>`, where `<area>` names the sub-project being
-  touched — e.g. `feature/web-login-form`, `feature/mobile-onboarding`,
-  `feature/backend-auth-api`. This keeps parallel work across sub-projects legible.
-- "Passed" means the checks **relevant to the area touched** succeed — e.g. for a
-  `web-app` change, `npm run check` and `npm run build` inside `web-app/`. Don't run
-  another sub-project's build/tests just because you touched an unrelated one.
-- **Never commit, merge, or push without the user's explicit confirmation** — ask every
-  time, even after checks pass. This is a standing rule, not a one-time check.
-- Once confirmed: commit on the feature branch, merge into `main` (no PR — direct
-  merge), and push.
-- Commits must **not** include a Claude/Anthropic co-author trailer
-  (`attribution.commit` is set to `""` in `.claude/settings.json` — don't override it
-  per-commit).
-- **No git remote is configured yet** (planned to be added later). Until a remote
-  exists: stop after the local commit + merge to `main`, and tell the user a push is
-  pending a remote. Once `origin` is set, resume pushing the feature branch and `main`
-  as part of the same confirmed flow.
+- Branch naming: `feature/<area>-<slug>`, e.g. `feature/mobile-onboarding`,
+  `feature/backend-risk-endpoint`, `feature/whatsapp-reminders`.
+- First commit on `main` must be an empty/minimal initial commit (hackathon rule).
+- Do not commit, merge, or push without explicit user confirmation — every time.
+- No Claude/Anthropic co-author trailer on commits.
+- GitHub repo stays public for the full event duration.
+
+## Hackathon submission requirements
+
+- Track: **Safety** only.
+- Disclose AI-assisted portions in `docs/ai-disclosure.md` — append as you go.
+- Demo video ≤ 2 minutes, Devpost text in English.
+- Minimum 3 commits, public repo throughout.
 
 ## Gotchas
 
-<!-- Add repo-wide gotchas here as they're discovered. Sub-project-specific gotchas
-     belong in that sub-project's own CLAUDE.md instead. -->
+<!-- Add project-specific gotchas here as they're discovered. -->

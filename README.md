@@ -1,48 +1,56 @@
-# vibes-hackathon
+# FinSafe
 
-Monorepo — one git repo, one sub-project folder per platform. Built for a hackathon,
-so structure favors speed over ceremony: each sub-project is independently
-runnable, with its own dependencies and lockfile.
+Monorepo — one git repo, one sub-project folder per platform. Built for Garuda
+Hacks 7.0 (Track 2: Safety). Structure favors speed over ceremony: each
+sub-project is independently runnable, with its own dependencies and lockfile.
 
 ## Structure
 
 ```
 vibes-hackathon/
 ├── CLAUDE.md                    ← shared Claude Code guidance (all sub-projects)
+├── docs/deployment.md           ← VPS/Nginx/PM2/Docker deployment notes
 ├── .claude/
 │   ├── settings.json            ← shared hooks/permissions, auto-detects sub-projects
-│   ├── rules/design.md          ← design PRINCIPLES (platform-agnostic)
+│   ├── rules/
+│   │   ├── design.md            ← design PRINCIPLES (platform-agnostic)
+│   │   └── product-context.md   ← product rationale, 7-step flow, privacy principle
 │   └── skills/                  ← workflows shared across sub-projects
 ├── .github/workflows/           ← CI (per-sub-project lint/typecheck jobs)
-└── web-app/                     ← Next.js 15 + tRPC + Prisma + Tailwind v4 web app
-    ├── CLAUDE.md                ← Next.js/tRPC-specific guidance
-    └── .claude/rules/design.md  ← Tailwind v4 technical implementation
+├── backend/                     ← Next.js API-only (tRPC + Prisma), no dashboard pages
+│   └── CLAUDE.md
+├── mobile-app/                  ← React Native (Expo) — the only frontend (not scaffolded yet)
+│   ├── CLAUDE.md
+│   └── .claude/agents/          ← screen-builder, design-reviewer, token-keeper subagents
+└── whatsapp-service/            ← Node.js + Baileys (WhatsApp reminders/quick consult)
+    └── CLAUDE.md
 ```
 
-Only `web-app/` exists today. Additional sub-projects (mobile app, backend service,
-etc.) may be added later as sibling folders following the same pattern — a folder with
-its own `package.json`/lockfile, its own `CLAUDE.md`, and its own `.claude/rules/`.
+`backend/` and `whatsapp-service/` have real code; `mobile-app/` is still a
+placeholder with just a `CLAUDE.md` (and its design subagents) until
+scaffolded. There is no separate web dashboard — `backend` is API-only, and
+the only UI lives in `mobile-app`.
 
 No shared workspace tooling (npm/pnpm workspaces) is used unless code actually needs to
 be shared between sub-projects — see `CLAUDE.md` for the reasoning.
 
-## Running `web-app`
+## Running `backend`
 
-Database is a cloud Postgres instance (Neon) — no local database setup needed.
+Set `DATABASE_URL` to your Postgres connection string — see
+`docs/deployment.md` for the self-hosted VPS/Docker setup.
 
 ```bash
-cd web-app
+cd backend
 npm install
 
-# copy .env.example to .env and set DATABASE_URL to the Neon connection string
-# (get it from a teammate or the Neon dashboard — never commit .env)
 cp .env.example .env
+# set DATABASE_URL (and MAIA_API_KEY / MAIA_BASE_URL for AI calls)
 
 npm run db:push   # sync Prisma schema to the database
 npm run dev        # start the dev server (Turbopack) at http://localhost:3000
 ```
 
-Other commands (run from inside `web-app/`, or via `npm --prefix web-app run <script>`
+Other commands (run from inside `backend/`, or via `npm --prefix backend run <script>`
 from the repo root):
 
 | Command | What it does |
@@ -58,14 +66,32 @@ from the repo root):
 | `npm run db:generate` | Create a Prisma migration in dev |
 | `npm run db:studio` | Open Prisma Studio |
 
-No test runner is wired up yet in `web-app`. See `web-app/CLAUDE.md` for full stack
+No test runner is wired up yet in `backend`. See `backend/CLAUDE.md` for full stack
 detail, architecture, and conventions.
+
+## Running `whatsapp-service`
+
+```bash
+cd whatsapp-service
+npm install
+
+cp .env.example .env
+# set BACKEND_URL, SHARED_API_KEY (must match backend's), DATABASE_URL
+
+npm run db:push   # own Postgres tables: WhatsappCreds, WhatsappSignalKey
+npm run dev        # scan the printed QR code with WhatsApp on first run
+```
+
+See `whatsapp-service/CLAUDE.md` for the quick-consult command format,
+reminder scheduling, and session-storage gotchas.
 
 ## Tech stack per folder
 
 | Folder | Stack |
 | --- | --- |
-| `web-app/` | Next.js 15 (App Router), TypeScript, tRPC v11, Prisma 6 + PostgreSQL, Tailwind CSS v4, `@tanstack/react-query` v5 |
+| `backend/` | Next.js 15 (App Router) API-only, TypeScript, tRPC v11, Prisma 6 + PostgreSQL, `@tanstack/react-query` v5, MAIA Router for AI explanations |
+| `mobile-app/` | React Native (Expo), TypeScript, React Navigation, Zustand, NativeWind — not scaffolded yet |
+| `whatsapp-service/` | Node.js (TypeScript, ESM), `baileys` (unscoped package), Prisma 6 + PostgreSQL, `node-cron` |
 
 ## Git workflow
 

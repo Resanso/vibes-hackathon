@@ -12,22 +12,22 @@ node_modules/
 .env.local
 .env*.local
 
-# web-app (Next.js / Prisma)
-web-app/.next/
-web-app/out/
-web-app/next-env.d.ts
-web-app/generated/prisma/
-web-app/*.tsbuildinfo
+# backend (Next.js / Prisma)
+backend/.next/
+backend/out/
+backend/next-env.d.ts
+backend/generated/prisma/
+backend/*.tsbuildinfo
 
-# mobile-app — illustrative, adjust once a mobile sub-project actually exists
-# mobile-app/.expo/          # Expo
-# mobile-app/ios/Pods/       # React Native bare
-# mobile-app/android/build/
-# mobile-app/.dart_tool/     # Flutter
-# mobile-app/build/
+# mobile-app (Expo / React Native)
+mobile-app/.expo/
+mobile-app/ios/Pods/
+mobile-app/android/build/
 
-# backend-service — illustrative, adjust once a backend sub-project actually exists
-# backend-service/dist/
+# whatsapp-service (Node.js / Baileys / Prisma)
+whatsapp-service/dist/
+whatsapp-service/generated/prisma/
+whatsapp-service/*.tsbuildinfo
 
 # testing
 coverage/
