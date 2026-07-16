@@ -131,8 +131,23 @@ failed archive still leaves a queryable trail of what was detected.
 - **Reminders** (`src/reminders/scheduler.ts`): a `node-cron` job (daily,
   `REMINDER_CRON` env) calls `backend`'s `reminders.dueSoon` and sends one WA
   message per result. Due dates are derived from `RiskEntry.firstDueDate` +
-  `tenorMonths` — there's no payment-tracking feature, so this only ever
-  answers "an installment date is coming up," never "was it paid."
+  `tenorMonths` — never knows whether a given installment was actually paid
+  (that's what the check-in tracking below is for).
+- **Daily check-in ("State 2" loan-payoff tracking)**
+  (`src/reminders/checkInScheduler.ts`): a separate `node-cron` job (daily,
+  `CHECKIN_REMINDER_CRON` env, default 8pm) calls `backend`'s
+  `tracking.pendingToday` and sends one reminder+spiral-borrower-education
+  message to every phone with an active `LoanTracking` that hasn't
+  confirmed "sudah menyisihkan uang" today — one evening message, not a
+  separate morning-reminder/evening-escalation pair (scope cut, given this
+  service's overall priority). The student replies `/sudah`
+  (`src/handlers/quickConsult.ts`'s `handleCheckInCommand`), which calls
+  `tracking.checkIn` with `source: "whatsapp"` and replies with the updated
+  remaining tunggakan. `mobile-app`'s `SafetyDashboard` (`Beranda` tab) is
+  the other place the same check-in can happen (`source: "app"`) — the
+  `(loanTrackingId, date)` unique constraint on `backend`'s `DailyCheckIn`
+  model means whichever confirms first each day is the one that counts, no
+  double-count.
 
 ## Conventions
 

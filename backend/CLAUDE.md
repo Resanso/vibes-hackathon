@@ -78,7 +78,18 @@ tRPC routers under `src/server/api/routers/`:
    `mobile-app`'s step 6 screen
 6. `reminders` — `dueSoon` query, used by `whatsapp-service`'s daily cron to find
    upcoming installment due dates (derived from `RiskEntry.firstDueDate`, not a
-   stored payment schedule — there's no payment-tracking feature)
+   stored payment schedule)
+7. `tracking` — "State 2": daily payoff-progress tracking for a loan the
+   student explicitly marked as actually taken (`start`, keyed by
+   `RiskEntry.id`), not every `risk.assess` call (many are just
+   simulations). `checkIn` records "sudah menyisihkan uang" for today
+   (idempotent per day, `source: "app" | "whatsapp"`), `status` returns
+   computed remaining-tunggakan/days-confirmed for `mobile-app`'s
+   `SafetyDashboard`, `pendingToday` is what `whatsapp-service`'s evening
+   cron polls to find who to remind. Logic lives in
+   `src/server/logic/loanTracking.ts` (pure, unit-testable — mirrors
+   `riskScore.ts`'s pattern). `LoanTracking`/`DailyCheckIn` models in
+   `prisma/schema.prisma`.
 
 ## Conventions
 

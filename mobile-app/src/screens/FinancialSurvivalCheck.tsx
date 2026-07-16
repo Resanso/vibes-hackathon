@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, Text, TextInput, View } from "react-native";
+import { SafeAreaView, ScrollView, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { CreditCard, Lock, PieChart, ShieldCheck, Users, Wallet } from "lucide-react-native";
 
 import { ApiError, upsertProfile } from "../api/client";
 import { BackButton } from "../components/BackButton";
+import { IconCircleField } from "../components/IconCircleField";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { StatusToast } from "../components/StatusToast";
+import { StepProgressHeader } from "../components/StepProgressHeader";
 import { colors } from "../theme/colors";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useSessionStore } from "../store/sessionStore";
 import { loadDraft, saveDraft } from "../utils/formDraft";
-
-// Neutral UI-chrome gray for input borders — not part of the locked brand
-// palette in colors.ts (that table is brand intent colors only), just a
-// standard light border tone for a cleaner input look.
-const BORDER_GRAY = "#CBD5E1";
 
 type Props = NativeStackScreenProps<RootStackParamList, "FinancialSurvivalCheck">;
 
@@ -25,29 +23,8 @@ interface Draft extends Record<string, string> {
 }
 
 const DRAFT_KEY = "financial-survival-check";
-
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 2;
-
-// Real sequence — this is a fixed 5-step onboarding flow, so a step indicator is a
-// legitimate use of ordered markers (not the banned decorative 01/02/03).
-function StepIndicator() {
-  return (
-    <View className="flex-row" style={{ gap: 6 }}>
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-        <View
-          key={i}
-          className="flex-1 rounded-full"
-          style={{
-            height: 4,
-            backgroundColor: i < CURRENT_STEP ? colors.primary : colors.neutral,
-            opacity: i < CURRENT_STEP ? 1 : 0.12,
-          }}
-        />
-      ))}
-    </View>
-  );
-}
 
 function parseAmount(text: string): number {
   const digits = text.replace(/[^0-9]/g, "");
@@ -64,9 +41,6 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
   const [incomeText, setIncomeText] = useState("");
   const [debtText, setDebtText] = useState("");
   const [dependentsText, setDependentsText] = useState("0");
-  const [focusedField, setFocusedField] = useState<
-    "income" | "debt" | "dependents" | null
-  >(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ variant: "success" | "error"; message: string } | null>(
     null,
@@ -122,95 +96,95 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
         className="flex-1 px-6 py-6"
-        contentContainerStyle={{ gap: 28 }}
+        contentContainerStyle={{ gap: 24 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ gap: 12 }}>
-          <BackButton
-            testID="fsc-back-button"
-            onPress={() => navigation.goBack()}
-          />
-          <StepIndicator />
-          <Text className="font-body text-xs" style={{ color: colors.neutral, opacity: 0.6 }}>
-            Langkah {CURRENT_STEP} dari {TOTAL_STEPS}
-          </Text>
-        </View>
+        <BackButton testID="fsc-back-button" onPress={() => navigation.goBack()} />
+
+        <StepProgressHeader currentStep={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
 
         <View style={{ gap: 8 }}>
           <Text className="font-display text-neutral" style={{ fontSize: 24 }}>
             Cek Kondisi Keuanganmu
           </Text>
-          <Text className="font-body text-neutral" style={{ opacity: 0.7 }}>
-            Data ini cuma dipakai untuk menghitung risiko pinjamanmu — tidak
-            dibagikan ke pihak lain.
-          </Text>
+          <View className="flex-row items-start" style={{ gap: 8 }}>
+            <ShieldCheck color={colors.primary} size={18} style={{ marginTop: 2 }} />
+            <Text className="flex-1 font-body text-neutral" style={{ opacity: 0.7 }}>
+              Biar Nera bisa kasih gambaran yang relevan. Data kamu aman dan
+              tidak dibagikan ke siapa pun.
+            </Text>
+          </View>
         </View>
 
         <View style={{ gap: 16 }}>
-          <View style={{ gap: 6 }}>
-            <Text className="font-heading text-sm text-neutral">
-              Pemasukan bulanan
-            </Text>
-            <TextInput
-              testID="fsc-income-input"
-              value={incomeText}
-              onChangeText={setIncomeText}
-              placeholder="Rp0"
-              placeholderTextColor="#475569"
-              keyboardType="number-pad"
-              onFocus={() => setFocusedField("income")}
-              onBlur={() => setFocusedField(null)}
-              className="rounded-2xl border px-4 py-3 font-body text-neutral"
-              style={{
-                borderColor: focusedField === "income" ? colors.secondary : BORDER_GRAY,
-              }}
-            />
-          </View>
+          <IconCircleField
+            testID="fsc-income-input"
+            icon={Wallet}
+            iconTint={`${colors.primary}1F`}
+            iconColor={colors.primary}
+            label="Pemasukan bulanan"
+            value={incomeText}
+            onChangeText={setIncomeText}
+            placeholder="Contoh: 2.500.000"
+            prefix="Rp"
+            keyboardType="number-pad"
+            helperText="Semua sumber pendapatan, termasuk uang saku & freelance."
+          />
 
-          <View style={{ gap: 6 }}>
-            <Text className="font-heading text-sm text-neutral">
-              Cicilan/utang bulanan yang sudah ada
-            </Text>
-            <TextInput
+          <View style={{ gap: 8 }}>
+            <IconCircleField
               testID="fsc-debt-input"
+              icon={CreditCard}
+              iconTint={`${colors.secondary}1F`}
+              iconColor={colors.secondary}
+              label="Cicilan/utang bulanan yang sudah ada"
               value={debtText}
               onChangeText={setDebtText}
-              placeholder="Rp0"
-              placeholderTextColor="#475569"
+              placeholder="Contoh: 650.000"
+              prefix="Rp"
               keyboardType="number-pad"
-              onFocus={() => setFocusedField("debt")}
-              onBlur={() => setFocusedField(null)}
-              className="rounded-2xl border px-4 py-3 font-body text-neutral"
-              style={{
-                borderColor: focusedField === "debt" ? colors.secondary : BORDER_GRAY,
-              }}
+              helperText="Termasuk paylater, KTA, kartu kredit, dll."
             />
             {debtRatioPct !== null ? (
-              <Text className="font-body text-xs" style={{ color: colors.neutral, opacity: 0.6 }}>
-                ≈ {debtRatioPct}% dari pemasukanmu ({formatRupiah(debt)}/bulan)
-              </Text>
+              <View
+                className="flex-row items-center self-start rounded-full px-3 py-2"
+                style={{ backgroundColor: `${colors.secondary}14`, gap: 6 }}
+              >
+                <PieChart color={colors.secondary} size={14} />
+                <Text className="font-body text-xs text-neutral">
+                  ≈{" "}
+                  <Text className="font-heading" style={{ color: colors.secondary }}>
+                    {debtRatioPct}%
+                  </Text>{" "}
+                  dari pemasukanmu ({formatRupiah(debt)}/bulan)
+                </Text>
+              </View>
             ) : null}
           </View>
 
-          <View style={{ gap: 6 }}>
-            <Text className="font-heading text-sm text-neutral">
-              Jumlah tanggungan (opsional)
-            </Text>
-            <TextInput
-              testID="fsc-dependents-input"
-              value={dependentsText}
-              onChangeText={setDependentsText}
-              placeholder="0"
-              placeholderTextColor="#475569"
-              keyboardType="number-pad"
-              onFocus={() => setFocusedField("dependents")}
-              onBlur={() => setFocusedField(null)}
-              className="rounded-2xl border px-4 py-3 font-body text-neutral"
-              style={{
-                borderColor: focusedField === "dependents" ? colors.secondary : BORDER_GRAY,
-              }}
-            />
-          </View>
+          <IconCircleField
+            testID="fsc-dependents-input"
+            icon={Users}
+            iconTint={`${colors.primary}1F`}
+            iconColor={colors.primary}
+            label="Jumlah tanggungan (opsional)"
+            value={dependentsText}
+            onChangeText={setDependentsText}
+            placeholder="Contoh: 1"
+            keyboardType="number-pad"
+            helperText="Orang yang menjadi tanggunganmu."
+          />
+        </View>
+
+        <View
+          className="flex-row items-start rounded-2xl px-4 py-4"
+          style={{ backgroundColor: `${colors.primary}0D`, gap: 10 }}
+        >
+          <Lock color={colors.primary} size={18} style={{ marginTop: 2 }} />
+          <Text className="flex-1 font-body text-sm text-neutral" style={{ opacity: 0.75 }}>
+            Jawabanmu hanya digunakan untuk analisis di perangkatmu. Kamu
+            tetap memegang kendali penuh.
+          </Text>
         </View>
 
         {toast ? (
@@ -226,6 +200,7 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
           label={submitting ? "Menyimpan..." : "Simpan"}
           onPress={handleSubmit}
           disabled={!isValid || submitting}
+          showArrow
         />
       </ScrollView>
     </SafeAreaView>

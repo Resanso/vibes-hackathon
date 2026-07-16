@@ -5,16 +5,18 @@ import { FinancialSurvivalCheck } from "../screens/FinancialSurvivalCheck";
 import { BorrowingScenario } from "../screens/BorrowingScenario";
 import { FinancialRiskIntelligence } from "../screens/FinancialRiskIntelligence";
 import { DecisionSupport } from "../screens/DecisionSupport";
-import { SafetyDashboard } from "../screens/SafetyDashboard";
+import { MainTabNavigator } from "./MainTabNavigator";
 import type { RiskAssessment } from "../api/client";
 
 export type RootStackParamList = {
   Onboarding: undefined;
   FinancialSurvivalCheck: undefined;
-  BorrowingScenario: undefined;
-  FinancialRiskIntelligence: { assessment: RiskAssessment };
+  // standalone: true when reused from the "Cek Baru" tab, outside the
+  // 5-step onboarding sequence (see BorrowingScenario.tsx / MainTabNavigator.tsx)
+  BorrowingScenario: { standalone?: boolean } | undefined;
+  FinancialRiskIntelligence: { assessment: RiskAssessment; standalone?: boolean };
   DecisionSupport: undefined;
-  SafetyDashboard: undefined;
+  MainTabs: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -36,7 +38,7 @@ export function RootNavigator() {
         component={FinancialRiskIntelligence}
       />
       <Stack.Screen name="DecisionSupport" component={DecisionSupport} />
-      <Stack.Screen name="SafetyDashboard" component={SafetyDashboard} />
+      <Stack.Screen name="MainTabs" component={MainTabNavigator} />
     </Stack.Navigator>
   );
 }

@@ -46,5 +46,46 @@ model RiskEntry {
 
     createdAt DateTime @default(now())
 
+    // Set only once the user confirms they actually took this loan (not
+    // every risk.assess call — many are just simulations). See LoanTracking.
+    tracking LoanTracking?
+
     @@index([phone, createdAt])
+}
+
+// "State 2" of the product: after a loan is actually taken, track daily
+// progress toward paying it off — separate from RiskEntry.firstDueDate's
+// monthly due-date reminders, which only ever answer "is a date coming up,"
+// never "did the user set money aside." One LoanTracking per RiskEntry the
+// user explicitly marked as taken (mobile-app's "Saya Jadi Ambil Pinjaman
+// Ini" button).
+model LoanTracking {
+    id          String @id @default(cuid())
+    riskEntryId String @unique
+    riskEntry   RiskEntry @relation(fields: [riskEntryId], references: [id])
+    phone       String
+
+    // ceil(monthlyInstallment / days-in-that-calendar-month), computed once
+    // at tracking start — see src/server/logic/loanTracking.ts.
+    dailyTargetAmount Int
+    startedAt         DateTime @default(now())
+
+    checkIns DailyCheckIn[]
+
+    @@index([phone])
+}
+
+model DailyCheckIn {
+    id             String @id @default(cuid())
+    loanTrackingId String
+    loanTracking   LoanTracking @relation(fields: [loanTrackingId], references: [id])
+
+    // Calendar day this check-in is for, normalized to UTC midnight — not
+    // createdAt, so a WhatsApp reply and an in-app tap for the same day
+    // don't create two rows (see the unique constraint below).
+    date      DateTime
+    source    String // "app" | "whatsapp"
+    createdAt DateTime @default(now())
+
+    @@unique([loanTrackingId, date])
 }

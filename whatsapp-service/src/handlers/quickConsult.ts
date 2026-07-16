@@ -7,6 +7,8 @@ const USAGE = [
   "Format: /cek <nominal> <bunga%/tahun> <biaya> <tenor bulan>",
   "Contoh: /cek 3000000 24 50000 6",
   "(Pastikan kamu sudah punya profil di aplikasi Nera dulu.)",
+  "",
+  "Lagi nge-track pelunasan pinjaman? Balas /sudah kalau hari ini sudah nyisihkan uang.",
 ].join("\n");
 
 function jidToPhone(jid: string): string {
@@ -15,6 +17,34 @@ function jidToPhone(jid: string): string {
 
 function formatRupiah(amount: number): string {
   return `Rp${amount.toLocaleString("id-ID")}`;
+}
+
+async function handleCheckInCommand(sock: WASocket, jid: string, phone: string): Promise<void> {
+  try {
+    await backend.checkIn({ phone, source: "whatsapp" });
+    const status = await backend.trackingStatus(phone);
+
+    if (!status) {
+      await sock.sendMessage(jid, {
+        text: "Belum ada pinjaman yang di-track. Tandai pinjamanmu di aplikasi Nera dulu.",
+      });
+      return;
+    }
+
+    const reply = [
+      "Sip, tercatat! 🎉",
+      `Sisa tunggakan: ${formatRupiah(status.remainingAmount)}`,
+      `Total hari disisihkan: ${status.daysConfirmed} hari`,
+    ].join("\n");
+
+    await sock.sendMessage(jid, { text: reply });
+  } catch (error) {
+    const isNotFound = error instanceof TRPCClientError && error.data?.code === "NOT_FOUND";
+    const message = isNotFound
+      ? "Belum ada pinjaman yang di-track. Tandai pinjamanmu di aplikasi Nera dulu."
+      : "Gagal memproses konfirmasi. Coba lagi sebentar lagi.";
+    await sock.sendMessage(jid, { text: message });
+  }
 }
 
 function parseCekCommand(text: string): {
@@ -60,9 +90,15 @@ export async function handleIncomingMessage(
       message.message?.conversation ??
       message.message?.extendedTextMessage?.text ??
       "";
+    const trimmed = text.trim();
 
-    if (!text.trim().startsWith("/cek")) {
-      if (text.trim().length > 0) {
+    if (trimmed === "/sudah") {
+      await handleCheckInCommand(sock, jid, jidToPhone(jid));
+      continue;
+    }
+
+    if (!trimmed.startsWith("/cek")) {
+      if (trimmed.length > 0) {
         await sock.sendMessage(jid, { text: USAGE });
       }
       continue;

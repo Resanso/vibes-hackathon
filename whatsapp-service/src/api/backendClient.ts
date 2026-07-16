@@ -41,6 +41,24 @@ export interface DueReminder {
   monthlyInstallment: number;
 }
 
+// "State 2" tracking — see backend/src/server/api/routers/tracking.ts.
+export interface PendingCheckIn {
+  phone: string;
+  dailyTargetAmount: number;
+}
+
+export interface TrackingStatus {
+  riskEntryId: string;
+  principal: number;
+  totalRepayment: number;
+  startedAt: string;
+  dailyTargetAmount: number;
+  daysConfirmed: number;
+  amountSaved: number;
+  remainingAmount: number;
+  confirmedToday: boolean;
+}
+
 export const backend = {
   simulateLoan: (input: {
     principal: number;
@@ -59,4 +77,13 @@ export const backend = {
 
   dueSoon: (input: { withinDays: number }) =>
     client.query("reminders.dueSoon", input) as Promise<DueReminder[]>,
+
+  pendingCheckIns: () =>
+    client.query("tracking.pendingToday", undefined) as Promise<PendingCheckIn[]>,
+
+  checkIn: (input: { phone: string; source: "app" | "whatsapp" }) =>
+    client.mutation("tracking.checkIn", input) as Promise<unknown>,
+
+  trackingStatus: (phone: string) =>
+    client.query("tracking.status", { phone }) as Promise<TrackingStatus | null>,
 };

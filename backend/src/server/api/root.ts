@@ -4,6 +4,7 @@ import { recommendationsRouter } from "~/server/api/routers/recommendations";
 import { remindersRouter } from "~/server/api/routers/reminders";
 import { riskRouter } from "~/server/api/routers/risk";
 import { simulationRouter } from "~/server/api/routers/simulation";
+import { trackingRouter } from "~/server/api/routers/tracking";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   recommendations: recommendationsRouter,
   dashboard: dashboardRouter,
   reminders: remindersRouter,
+  tracking: trackingRouter,
 });
 
 // export type definition of API

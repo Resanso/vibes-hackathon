@@ -58,6 +58,7 @@ export const riskRouter = createTRPCRouter({
     });
 
     return {
+      id: entry.id,
       riskScore: entry.riskScore,
       riskLabel: entry.riskLabel,
       reasons: risk.reasons,

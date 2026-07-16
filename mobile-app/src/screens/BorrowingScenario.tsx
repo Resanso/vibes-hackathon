@@ -4,25 +4,22 @@ import {
   SafeAreaView,
   ScrollView,
   Text,
-  TextInput,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Calendar1, Eye, FileText, Percent, Wallet } from "lucide-react-native";
 
 import { ApiError, assessRisk } from "../api/client";
 import { BackButton } from "../components/BackButton";
+import { IconCircleField } from "../components/IconCircleField";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { StatusToast } from "../components/StatusToast";
+import { StepProgressHeader } from "../components/StepProgressHeader";
 import { colors } from "../theme/colors";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useSessionStore } from "../store/sessionStore";
 import { loadDraft, saveDraft } from "../utils/formDraft";
-
-// Neutral UI-chrome gray for input borders — not part of the locked brand
-// palette in colors.ts (that table is brand intent colors only), just a
-// standard light border tone for a cleaner input look.
-const BORDER_GRAY = "#CBD5E1";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BorrowingScenario">;
 
@@ -34,29 +31,8 @@ interface Draft extends Record<string, string> {
 }
 
 const DRAFT_KEY = "borrowing-scenario";
-
 const TOTAL_STEPS = 5;
 const CURRENT_STEP = 3;
-
-// Real sequence — this is a fixed 5-step onboarding flow, so a step indicator is a
-// legitimate use of ordered markers (not the banned decorative 01/02/03).
-function StepIndicator() {
-  return (
-    <View className="flex-row" style={{ gap: 6 }}>
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-        <View
-          key={i}
-          className="flex-1 rounded-full"
-          style={{
-            height: 4,
-            backgroundColor: i < CURRENT_STEP ? colors.primary : colors.neutral,
-            opacity: i < CURRENT_STEP ? 1 : 0.12,
-          }}
-        />
-      ))}
-    </View>
-  );
-}
 
 function parseAmount(text: string): number {
   const digits = text.replace(/[^0-9]/g, "");
@@ -90,16 +66,14 @@ function previewMonthlyInstallment(
   return { monthlyInstallment, totalRepayment };
 }
 
-export function BorrowingScenario({ navigation }: Props) {
+export function BorrowingScenario({ navigation, route }: Props) {
   const phone = useSessionStore((state) => state.phone);
+  const standalone = route.params?.standalone ?? false;
 
   const [principalText, setPrincipalText] = useState("");
   const [interestRateText, setInterestRateText] = useState("");
   const [serviceFeeText, setServiceFeeText] = useState("0");
   const [tenorText, setTenorText] = useState("");
-  const [focusedField, setFocusedField] = useState<
-    "principal" | "interestRate" | "serviceFee" | "tenor" | null
-  >(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ variant: "success" | "error"; message: string } | null>(
     null,
@@ -150,7 +124,7 @@ export function BorrowingScenario({ navigation }: Props) {
         serviceFee,
         tenorMonths,
       });
-      navigation.navigate("FinancialRiskIntelligence", { assessment: result });
+      navigation.navigate("FinancialRiskIntelligence", { assessment: result, standalone });
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -167,19 +141,14 @@ export function BorrowingScenario({ navigation }: Props) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView
           className="flex-1 px-6 py-6"
-          contentContainerStyle={{ gap: 28 }}
+          contentContainerStyle={{ gap: 24 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ gap: 12 }}>
-            <BackButton
-              testID="bs-back-button"
-              onPress={() => navigation.goBack()}
-            />
-            <StepIndicator />
-            <Text className="font-body text-xs" style={{ color: colors.neutral, opacity: 0.6 }}>
-              Langkah {CURRENT_STEP} dari {TOTAL_STEPS}
-            </Text>
-          </View>
+          <BackButton testID="bs-back-button" onPress={() => navigation.goBack()} />
+
+          {standalone ? null : (
+            <StepProgressHeader currentStep={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
+          )}
 
           <View style={{ gap: 8 }}>
             <Text className="font-display text-neutral" style={{ fontSize: 24 }}>
@@ -192,101 +161,97 @@ export function BorrowingScenario({ navigation }: Props) {
           </View>
 
           <View style={{ gap: 16 }}>
-            <View style={{ gap: 6 }}>
-              <Text className="font-heading text-sm text-neutral">
-                Jumlah pinjaman
-              </Text>
-              <TextInput
-                testID="bs-principal-input"
-                value={principalText}
-                onChangeText={setPrincipalText}
-                placeholder="Rp0"
-                placeholderTextColor="#475569"
-                keyboardType="number-pad"
-                onFocus={() => setFocusedField("principal")}
-                onBlur={() => setFocusedField(null)}
-                className="rounded-2xl border px-4 py-3 font-body text-neutral"
-                style={{
-                  borderColor: focusedField === "principal" ? colors.secondary : BORDER_GRAY,
-                }}
-              />
-            </View>
+            <IconCircleField
+              testID="bs-principal-input"
+              icon={Wallet}
+              iconTint={`${colors.primary}1F`}
+              iconColor={colors.primary}
+              label="Nominal pinjaman"
+              value={principalText}
+              onChangeText={setPrincipalText}
+              placeholder="Contoh: 5.000.000"
+              prefix="Rp"
+              keyboardType="number-pad"
+            />
 
-            <View style={{ gap: 6 }}>
-              <Text className="font-heading text-sm text-neutral">
-                Bunga per tahun (%)
-              </Text>
-              <TextInput
-                testID="bs-interest-rate-input"
-                value={interestRateText}
-                onChangeText={setInterestRateText}
-                placeholder="0"
-                placeholderTextColor="#475569"
-                keyboardType="decimal-pad"
-                onFocus={() => setFocusedField("interestRate")}
-                onBlur={() => setFocusedField(null)}
-                className="rounded-2xl border px-4 py-3 font-body text-neutral"
-                style={{
-                  borderColor: focusedField === "interestRate" ? colors.secondary : BORDER_GRAY,
-                }}
-              />
-            </View>
+            <IconCircleField
+              testID="bs-interest-rate-input"
+              icon={Percent}
+              iconTint={`${colors.secondary}1F`}
+              iconColor={colors.secondary}
+              label="Suku bunga per tahun"
+              value={interestRateText}
+              onChangeText={setInterestRateText}
+              placeholder="Contoh: 24"
+              suffix="%"
+              keyboardType="decimal-pad"
+            />
 
-            <View style={{ gap: 6 }}>
-              <Text className="font-heading text-sm text-neutral">
-                Biaya layanan/admin (opsional)
-              </Text>
-              <TextInput
-                testID="bs-service-fee-input"
-                value={serviceFeeText}
-                onChangeText={setServiceFeeText}
-                placeholder="Rp0"
-                placeholderTextColor="#475569"
-                keyboardType="number-pad"
-                onFocus={() => setFocusedField("serviceFee")}
-                onBlur={() => setFocusedField(null)}
-                className="rounded-2xl border px-4 py-3 font-body text-neutral"
-                style={{
-                  borderColor: focusedField === "serviceFee" ? colors.secondary : BORDER_GRAY,
-                }}
-              />
-            </View>
+            <IconCircleField
+              testID="bs-service-fee-input"
+              icon={FileText}
+              iconTint={`${colors.primary}1F`}
+              iconColor={colors.primary}
+              label="Biaya layanan/admin (opsional)"
+              value={serviceFeeText}
+              onChangeText={setServiceFeeText}
+              placeholder="Contoh: 150.000"
+              suffix="Rp"
+              keyboardType="number-pad"
+            />
 
-            <View style={{ gap: 6 }}>
-              <Text className="font-heading text-sm text-neutral">
-                Tenor (bulan)
-              </Text>
-              <TextInput
-                testID="bs-tenor-input"
-                value={tenorText}
-                onChangeText={setTenorText}
-                placeholder="0"
-                placeholderTextColor="#475569"
-                keyboardType="number-pad"
-                onFocus={() => setFocusedField("tenor")}
-                onBlur={() => setFocusedField(null)}
-                className="rounded-2xl border px-4 py-3 font-body text-neutral"
-                style={{
-                  borderColor: focusedField === "tenor" ? colors.secondary : BORDER_GRAY,
-                }}
-              />
-            </View>
+            <IconCircleField
+              testID="bs-tenor-input"
+              icon={Calendar1}
+              iconTint={`${colors.secondary}1F`}
+              iconColor={colors.secondary}
+              label="Tenor / jangka waktu"
+              value={tenorText}
+              onChangeText={setTenorText}
+              placeholder="Contoh: 6"
+              suffix="bulan"
+              keyboardType="number-pad"
+            />
           </View>
 
           {preview ? (
             <View
-              className="rounded-2xl border px-4 py-4"
-              style={{ borderColor: BORDER_GRAY, gap: 6 }}
+              className="rounded-2xl px-4 py-4"
+              style={{ backgroundColor: `${colors.secondary}0D`, gap: 8 }}
               testID="bs-cost-preview"
             >
-              <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.6 }}>
-                Perkiraan sebelum kamu memutuskan
-              </Text>
-              <Text className="font-body text-neutral">
-                Cicilan per bulan: {formatRupiah(preview.monthlyInstallment)}
-              </Text>
-              <Text className="font-body text-neutral">
-                Total yang harus dibayar: {formatRupiah(preview.totalRepayment)}
+              <View className="flex-row items-center" style={{ gap: 6 }}>
+                <Eye color={colors.secondary} size={16} />
+                <Text className="font-heading text-sm" style={{ color: colors.secondary }}>
+                  Ringkasan Skenario
+                </Text>
+              </View>
+              <Text className="font-body text-sm text-neutral">
+                Jika kamu meminjam{" "}
+                <Text className="font-heading" style={{ color: colors.secondary }}>
+                  {formatRupiah(principal)}
+                </Text>{" "}
+                dengan bunga{" "}
+                <Text className="font-heading" style={{ color: colors.secondary }}>
+                  {interestRatePct}%
+                </Text>{" "}
+                per tahun, biaya layanan{" "}
+                <Text className="font-heading" style={{ color: colors.secondary }}>
+                  {formatRupiah(serviceFee)}
+                </Text>
+                , selama{" "}
+                <Text className="font-heading" style={{ color: colors.secondary }}>
+                  {tenorMonths} bulan
+                </Text>
+                , cicilanmu sekitar{" "}
+                <Text className="font-heading" style={{ color: colors.secondary }}>
+                  {formatRupiah(preview.monthlyInstallment)}
+                </Text>
+                /bulan dengan total{" "}
+                <Text className="font-heading" style={{ color: colors.secondary }}>
+                  {formatRupiah(preview.totalRepayment)}
+                </Text>
+                .
               </Text>
             </View>
           ) : null}
@@ -301,9 +266,10 @@ export function BorrowingScenario({ navigation }: Props) {
 
           <PrimaryButton
             testID="bs-submit-button"
-            label={submitting ? "Menghitung..." : "Cek Risikonya"}
+            label={submitting ? "Menghitung..." : "Lanjut"}
             onPress={handleSubmit}
             disabled={!isValid || submitting}
+            showArrow
           />
         </ScrollView>
       </TouchableWithoutFeedback>

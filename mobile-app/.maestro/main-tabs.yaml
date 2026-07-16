@@ -1,5 +1,5 @@
-# No deep link exists yet to reach this screen directly, so this flow
-# replays the full flow up to it before testing this screen's own elements.
+# No deep link exists yet to reach MainTabs directly, so this flow replays
+# the full 5-step onboarding first, then exercises each of the 5 tabs.
 appId: com.nera.app
 ---
 - launchApp:
@@ -37,5 +37,15 @@ appId: com.nera.app
 - tapOn:
     id: "ds-see-dashboard-button"
 - assertVisible: "Terus pantau skormu"
-- assertVisible:
-    id: "sd-trend-chart"
+
+- tapOn: "Alternatif"
+- assertVisible: "Alternatif yang Lebih Aman"
+
+- tapOn: "Edukasi"
+- assertVisible: "Materi edukasi finansial akan hadir di sini."
+
+- tapOn: "Profil"
+- assertVisible: "081234567890"
+
+- tapOn: "Beranda"
+- assertVisible: "Terus pantau skormu"

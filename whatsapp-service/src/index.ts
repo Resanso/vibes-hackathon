@@ -7,6 +7,7 @@ import { startTriggerServer } from "./internal/triggerServer.js";
 import { linkPersonalNumber } from "./personal/linkPersonalNumber.js";
 import { listActiveLinkedNumbers } from "./personal/linkedNumbers.js";
 import { scheduleReminders } from "./reminders/scheduler.js";
+import { scheduleCheckInReminders } from "./reminders/checkInScheduler.js";
 
 const prisma = new PrismaClient();
 
@@ -15,6 +16,7 @@ async function main(): Promise<void> {
     onMessages: handleIncomingMessage,
   });
   scheduleReminders();
+  scheduleCheckInReminders();
   startTriggerServer();
 
   // Reconnect every previously-linked student number — pairing itself

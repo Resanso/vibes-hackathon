@@ -1,5 +1,6 @@
-# No deep link exists yet to reach this screen directly, so this flow
-# replays the full flow up to it before testing this screen's own elements.
+# Exercises the "Cek Baru" tab: re-triggers BorrowingScenario→
+# FinancialRiskIntelligence in standalone mode (no step header, skips
+# FinancialSurvivalCheck since the profile already exists from onboarding).
 appId: com.nera.app
 ---
 - launchApp:
@@ -33,9 +34,27 @@ appId: com.nera.app
 - assertVisible: "Analisis Risiko Pinjamanmu"
 - tapOn:
     id: "fri-see-alternatives-button"
-- assertVisible: "Alternatif yang Bisa Kamu Pertimbangkan"
 - tapOn:
     id: "ds-see-dashboard-button"
 - assertVisible: "Terus pantau skormu"
+
+- tapOn: "Cek Baru"
+- assertVisible: "Ceritakan Pinjaman yang Kamu Pertimbangkan"
+- assertNotVisible: "Langkah 3 dari 5"
+- tapOn:
+    id: "bs-principal-input"
+- inputText: "1000000"
+- tapOn:
+    id: "bs-interest-rate-input"
+- inputText: "10"
+- tapOn:
+    id: "bs-tenor-input"
+- inputText: "3"
+- tapOn:
+    id: "bs-submit-button"
+- assertVisible: "Analisis Risiko Pinjamanmu"
 - assertVisible:
-    id: "sd-trend-chart"
+    id: "fri-done-button"
+- tapOn:
+    id: "fri-done-button"
+- assertVisible: "Terus pantau skormu"

@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from "react-native";
+import { ArrowRight } from "lucide-react-native";
 
 import { colors } from "../theme/colors";
 
@@ -7,6 +8,7 @@ interface PrimaryButtonProps {
   onPress?: () => void;
   disabled?: boolean;
   testID?: string;
+  showArrow?: boolean; // trailing arrow, matches the design reference's "Lanjut →" buttons
 }
 
 // Glossy "gummy" pill treatment (rounded-full, top-lit highlight, soft
@@ -15,7 +17,7 @@ interface PrimaryButtonProps {
 // wasn't compiled into the currently installed dev-client build, so this
 // approximates the same glossy look with zero native dependencies (works on
 // any client, no rebuild needed).
-export function PrimaryButton({ label, onPress, disabled, testID }: PrimaryButtonProps) {
+export function PrimaryButton({ label, onPress, disabled, testID, showArrow }: PrimaryButtonProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -91,7 +93,10 @@ export function PrimaryButton({ label, onPress, disabled, testID }: PrimaryButto
             backgroundColor: "rgba(0,0,0,0.08)",
           }}
         />
-        <Text className="font-heading text-base text-white">{label}</Text>
+        <View className="flex-row items-center" style={{ gap: 8 }}>
+          <Text className="font-heading text-base text-white">{label}</Text>
+          {showArrow ? <ArrowRight color="white" size={18} /> : null}
+        </View>
       </View>
     </Pressable>
   );

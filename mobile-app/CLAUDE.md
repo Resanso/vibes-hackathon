@@ -1,16 +1,22 @@
 # CLAUDE.md — mobile-app
 
 React Native client — the **only** frontend in this product (no separate web
-dashboard). Implements all 7 steps of the user flow, including the personal
-Financial Safety Dashboard (step 6) as a normal in-app screen — not a separate
-platform. See root `.claude/rules/product-context.md` for the full flow.
+dashboard). See root `.claude/rules/product-context.md` for the original
+7-step flow concept — **superseded** by the architecture below: a 5-step
+onboarding stack (Onboarding → FinancialSurvivalCheck → BorrowingScenario →
+FinancialRiskIntelligence → DecisionSupport), then a persistent 5-tab
+bottom navigator (Beranda/Cek Baru/Alternatif/Edukasi/Profil) as the app's
+home. `AICoach` was dropped from scope — the tab bar's `Edukasi`/`Profil`
+tabs cover what it would have.
 
-**Expo skeleton + locked design tokens + navigation + first 2 screens exist.**
-5 screens remain (`BorrowingScenario` onward) — build them one at a time via
-the `token-keeper` → `screen-builder` → `design-reviewer` loop below.
-`npm install` hasn't been run in this sandbox (see root gotchas) — the user
-runs it locally, along with `npx expo install` for the React Navigation deps
-added alongside the first 2 screens.
+All 5 onboarding screens + the tab navigator + all 5 tabs exist and are
+wired up. Design pass against reference mockups in `design-reference/` is
+done for `Onboarding`, `FinancialSurvivalCheck`, `FinancialRiskIntelligence`
+(the calibration screens); `BorrowingScenario`, `DecisionSupport`,
+`SafetyDashboard` got a lighter pass using the same components. Character
+illustrations from the reference mockups were **deliberately skipped**
+(icon + layout + copy only) — deprioritized as a time sink relative to
+finishing every screen; nice-to-have if time allows before submission.
 
 ## Stack
 
@@ -37,28 +43,76 @@ added alongside the first 2 screens.
   values for non-className consumers (e.g. SVG props). `tailwind.config.js`
   is the className-based equivalent — both must stay in sync, see the
   comments in each file.
-- `src/components/` — `PrimaryButton`, `SecondaryButton`, `RiskScoreGauge`,
-  `StatusToast`, already built to the locked tokens. Reuse these rather than
-  rebuilding equivalents inside a screen.
+- `src/components/` — `PrimaryButton` (glossy pill, `showArrow` prop),
+  `SecondaryButton`, `BackButton`, `StatusToast`, `StatusBadge` (aman/
+  waspada/bahaya pill, exactly 3 variants), `StepProgressHeader` (logo +
+  decorative circles + segmented progress bar + "Langkah X dari 5" pill;
+  exports `DecorativeCircles` standalone too, used on `SafetyDashboard`),
+  `IconCircleField` (icon-circle form input), `SummaryCallout` (colored
+  left-border callout box), `ListItemCard` (icon + title + description +
+  chevron, `featured` variant for the one recommended alternative),
+  `RiskScoreGauge` (ring + score/100, no label baked in — pair with
+  `StatusBadge`), `TrendChart` (custom SVG line chart with 30/60 threshold
+  lines + last-point tooltip). Reuse these rather than rebuilding
+  equivalents inside a screen.
 - `App.tsx` — mounts `NavigationContainer` + `RootNavigator`, handles Poppins
-  font loading / splash screen. No longer the temporary component showcase.
-- `src/navigation/RootNavigator.tsx` — native-stack navigator,
-  `RootStackParamList` is the source of truth for route names/params. Add a
-  new `Stack.Screen` here whenever a screen is built.
-- `src/screens/` — `Onboarding` (collects name + phone, phone becomes the
-  backend user identifier), `FinancialSurvivalCheck` (income/debt/dependents
-  → `profile.upsert`). Remaining, not built yet: `BorrowingScenario`,
-  `FinancialRiskIntelligence`, `DecisionSupport`, `SafetyDashboard`,
-  `AICoach`.
-- `src/store/sessionStore.ts` — Zustand, session-only, currently just
-  `{ phone, name }` set once in `Onboarding`. Add fields here only once a
-  second screen actually needs to read them — don't pre-model state nothing
-  consumes yet.
+  font loading / splash screen.
+- `src/navigation/RootNavigator.tsx` — native-stack navigator for the 5-step
+  onboarding sequence + `MainTabs` as its final screen (entered via
+  `navigation.reset` from `DecisionSupport`, so there's no "back into
+  onboarding"). `BorrowingScenario`/`FinancialRiskIntelligence` take an
+  optional `standalone` route param — `true` when reached from the "Cek
+  Baru" tab (skips the step header + onboarding-specific copy).
+- `src/navigation/MainTabNavigator.tsx` — the 5-tab bottom navigator:
+  `Beranda` (`SafetyDashboard`), `Cek Baru` (never renders — `tabPress` is
+  intercepted to push `BorrowingScenario` with `standalone: true` on the
+  parent stack instead), `Alternatif` (`AlternativesTab`, reuses
+  `DecisionSupport.tsx`'s exported `RecommendationList`), `Edukasi`
+  (`EducationPlaceholder`, no content model yet — genuinely just a
+  placeholder), `Profil` (`ProfileTab`, real `profile.get` data, read-only).
+- `src/screens/` — `Onboarding`, `FinancialSurvivalCheck`,
+  `BorrowingScenario`, `FinancialRiskIntelligence`, `DecisionSupport` (all 5
+  onboarding steps), `SafetyDashboard`, `AlternativesTab`,
+  `EducationPlaceholder`, `ProfileTab` (all 5 tabs).
+- `src/store/sessionStore.ts` — Zustand, session-only, `{ phone, name }` set
+  once in `Onboarding`. **Never select an object literal out of a Zustand
+  store** (`useStore((s) => ({ a: s.a, b: s.b }))`) — it returns a new
+  reference every render and causes an infinite re-render loop
+  ("Maximum update depth exceeded"). Select each primitive field separately.
+- `src/utils/formDraft.ts` — in-memory (not persisted across app restarts)
+  draft storage so typed form values survive navigating away and back
+  within a session. Not backed by AsyncStorage — that native module wasn't
+  compiled into the dev-client build this was tested against; swap back if
+  a future native rebuild includes it.
 - `src/api/client.ts` — `trpcQuery`/`trpcMutation` helpers + typed wrappers
-  per backend router used (`upsertProfile` so far). **Known scope cut**: no
-  full SuperJSON date-revival — response dates arrive as ISO strings, not
-  `Date` objects. Fine until a screen needs to format one (e.g.
-  `dashboard.trend`).
+  per backend router used. **Known scope cut**: no full SuperJSON
+  date-revival — response dates arrive as ISO strings, not `Date` objects.
+  Includes the "State 2" loan-tracking wrappers (`startTracking`,
+  `checkInTracking`, `getTrackingStatus`) — see "Loan payoff tracking"
+  below.
+
+## Loan payoff tracking ("State 2")
+
+After `FinancialRiskIntelligence` shows a risk result, a secondary
+"Saya Jadi Ambil Pinjaman Ini" button (`SecondaryButton`, not the primary
+CTA — taking the loan is a real-world action, not just advancing the flow)
+calls `tracking.start` with that `RiskEntry`'s id. This marks the loan as
+actually taken (not every `risk.assess` call is a real loan — many are just
+simulations) and starts daily payoff tracking on the backend
+(`backend/src/server/api/routers/tracking.ts` — `LoanTracking` +
+`DailyCheckIn` models, daily target = `monthlyInstallment` spread evenly
+across the calendar month).
+
+`SafetyDashboard` (the `Beranda` tab) shows a "Progress Pelunasan" card when
+`tracking.status` returns non-null: remaining tunggakan, daily target, and
+either a confirmed-today state or a "Sudah Sisihkan Hari Ini" button (calls
+`tracking.checkIn`) plus a spiral-borrower warning callout. Confirmation
+can also come from WhatsApp — `whatsapp-service`'s `/sudah` command calls
+the same `tracking.checkIn` with `source: "whatsapp"`; the unique
+`(loanTrackingId, date)` constraint keeps an app-tap and a WhatsApp reply on
+the same day from double-counting. See `whatsapp-service/CLAUDE.md` for the
+daily reminder cron (`CHECKIN_REMINDER_CRON`, default 8pm) that nudges
+users who haven't confirmed yet.
 
 ## Building the next screen: `token-keeper` → `screen-builder` → `design-reviewer`
 
@@ -80,12 +134,16 @@ and say so explicitly rather than skipping the rigor.
   submit, not through the global store.
 - Never call any native module for installed-app enumeration, contacts, or SMS —
   hard rule, see root `.claude/rules/product-context.md` privacy principle.
-- `SafetyDashboard` screen is the one screen judges will likely spend the most
-  time on during Q&A since it's the only "dashboard" in the product — worth
-  polishing more than the others if time is tight elsewhere.
-- Step indicators (like `FinancialSurvivalCheck`'s `StepIndicator`) are a
-  legitimate use of ordered/numbered UI — the 7-step flow is a real fixed
+- `SafetyDashboard` (`Beranda` tab) is the one screen judges will likely
+  spend the most time on during Q&A since it's the only "dashboard" in the
+  product — worth polishing more than the others if time is tight
+  elsewhere.
+- Step indicators (`StepProgressHeader`'s segmented bar) are a legitimate
+  use of ordered/numbered UI — the 5-step onboarding flow is a real fixed
   sequence, not the banned decorative `01/02/03` pattern from `design.md`.
+  Only the 5 onboarding screens show one; tab screens (`Beranda`,
+  `Alternatif`, `Edukasi`, `Profil`) never do — they're not steps in a
+  sequence.
 - Interactive elements that Maestro needs to target reliably (buttons, form
   inputs) get a `testID` — `PrimaryButton`/`SecondaryButton` accept it as a
   prop, `TextInput`s take it directly. Don't rely on visible text as a
@@ -110,15 +168,17 @@ touched nothing under `mobile-app/` — see the guard at the top of
 `run-ios-tests.sh` — so it doesn't slow down `backend`/`whatsapp-service`
 sessions.
 
-Only `.maestro/onboarding.yaml` and `.maestro/financial-survival-check.yaml`
-exist so far, matching the 2 screens actually built. The other 5 filenames
-listed in a previous instruction (`borrowing-scenario.yaml`,
-`financial-risk-intelligence.yaml`, `decision-support.yaml`,
-`safety-dashboard.yaml`, `ai-coach.yaml`) were deliberately **not**
-pre-created as empty/placeholder flows — a flow testing a screen that
-doesn't exist yet would fail immediately and break every session's Stop
-hook for unrelated reasons. Each gets created in the same session its screen
-is built, per the rule above.
+All 5 onboarding-step flows exist (`onboarding.yaml`,
+`financial-survival-check.yaml`, `borrowing-scenario.yaml`,
+`financial-risk-intelligence.yaml`, `decision-support.yaml`), plus
+`safety-dashboard.yaml` (replays onboarding through to the tab bar),
+`main-tabs.yaml` (exercises all 5 tabs after onboarding), and
+`cek-baru.yaml` (the standalone `BorrowingScenario`→`FinancialRiskIntelligence`
+loop triggered from the `Cek Baru` tab). No flow for `AICoach` — dropped
+from scope. `Edukasi`/`Alternatif`/`Profil` tabs are covered inline within
+`main-tabs.yaml` rather than getting their own dedicated flow files, since
+they're simple enough to assert in-line without replaying onboarding
+separately each time.
 
 `financial-survival-check.yaml` has no deep link to reach that screen
 directly yet, so it replays the `Onboarding` steps first before testing its
@@ -128,9 +188,11 @@ linking configured.
 ## MVP scope for hackathon
 
 ```
-IN scope: all 7 screens, including SafetyDashboard connected to backend's
-dashboard router (even if trend data is thin/seeded for the demo user)
-OUT of scope: offline mode, real push notification infra, biometric storage
+IN scope: 5-step onboarding + 5-tab main navigator, SafetyDashboard connected
+to backend's dashboard router, loan payoff tracking ("State 2" — see above)
+OUT of scope: AICoach, offline mode, real push notification infra,
+biometric storage, character illustrations from design-reference/ (icon +
+layout + copy only), Edukasi tab content (placeholder only, no content model)
 ```
 
 ## Git workflow
@@ -140,4 +202,23 @@ rules, and confirmation requirements apply repo-wide, not just to this sub-proje
 
 ## Gotchas
 
-<!-- Add as discovered -->
+- Physical iOS devices need `REACT_NATIVE_PACKAGER_HOSTNAME=<mac-lan-ip>` set
+  when running `expo run:ios --device <udid>`, or the app defaults to
+  `localhost` for the Metro connection and shows "No script URL provided."
+  Also needs an `NSAppTransportSecurity` exception in `app.json` for the
+  backend's plain-HTTP IP (`103.235.75.245`) on a custom dev-client build —
+  Expo Go exempts this by default, a bare/dev-client build doesn't.
+- If two different native modules fail with "Unimplemented component" /
+  "NativeModule: X is null" right after adding a dependency, the installed
+  dev-client build predates that dependency — a JS-only reload can't add
+  native code. Either do a full native rebuild (`expo run:ios`) or, if
+  time's tight, avoid the native dependency (see `PrimaryButton`'s
+  View/opacity-band gradient instead of `expo-linear-gradient`, and
+  `src/utils/formDraft.ts`'s in-memory store instead of AsyncStorage).
+- `design-reference/` holds final design mockups (1.png–7.png, not the
+  `01-screen-name.png` naming that may be referenced elsewhere) — 2/3 are
+  the same `FinancialSurvivalCheck` screen at two polish levels ("before"/
+  "after"); "after" is the calibration target for the whole app's polish
+  level, not just that one screen. No reference exists for `AICoach`
+  (dropped) or the tab bar (built to match this project's existing design
+  system per an explicit ask, not the reference's tab bar visuals).
