@@ -4,6 +4,8 @@ import { z } from "zod";
 import { env } from "~/env";
 import { apiKeyProcedure, createTRPCRouter } from "~/server/api/trpc";
 import { findDueInstallments } from "~/server/logic/reminders";
+import { calculateRiskScore } from "~/server/logic/riskScore";
+import { simulateLoan } from "~/server/logic/simulateLoan";
 
 const channelSchema = z.enum(["whatsapp", "telegram"]);
 
@@ -80,5 +82,54 @@ export const remindersRouter = createTRPCRouter({
 
       const result = (await response.json()) as { sent: number };
       return result;
+    }),
+
+  // Testing-only: creates a RiskEntry with firstDueDate set to tomorrow
+  // instead of the usual +1 calendar month, so `dueSoon`/`triggerNow` find
+  // it immediately with the *real* REMINDER_WINDOW_DAYS default (2) — no
+  // need to widen that window just to test reminders end-to-end. Doesn't
+  // touch risk-scoring realism (fixed placeholder loan terms); it exists
+  // purely to produce a due date, not to simulate a specific scenario.
+  debugCreateDueEntry: apiKeyProcedure
+    .input(z.object({ phone: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const profile = await ctx.db.profile.findUnique({ where: { phone: input.phone } });
+      if (!profile) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Profil tidak ditemukan." });
+      }
+
+      const principal = 500_000;
+      const interestRatePct = 12;
+      const serviceFee = 0;
+      const tenorMonths = 3;
+
+      const simulation = simulateLoan({ principal, interestRatePct, serviceFee, tenorMonths });
+      const risk = calculateRiskScore({
+        monthlyIncome: profile.monthlyIncome,
+        existingMonthlyDebt: profile.existingMonthlyDebt,
+        monthlyInstallment: simulation.monthlyInstallment,
+        tenorMonths,
+      });
+
+      const firstDueDate = new Date();
+      firstDueDate.setDate(firstDueDate.getDate() + 1);
+
+      const entry = await ctx.db.riskEntry.create({
+        data: {
+          phone: input.phone,
+          principal,
+          interestRatePct,
+          serviceFee,
+          tenorMonths,
+          monthlyInstallment: simulation.monthlyInstallment,
+          totalRepayment: simulation.totalRepayment,
+          riskScore: risk.score,
+          riskLabel: risk.label,
+          explanation: "Entry debug untuk testing reminder — dibuat lewat tombol debug di app.",
+          firstDueDate,
+        },
+      });
+
+      return { id: entry.id, firstDueDate: entry.firstDueDate };
     }),
 });
