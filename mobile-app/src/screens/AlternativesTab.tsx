@@ -9,7 +9,10 @@ import { RecommendationList } from "./DecisionSupport";
 export function AlternativesTab() {
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="flex-1 px-6 py-6" contentContainerStyle={{ gap: 24 }}>
+      <ScrollView
+        className="flex-1 px-6 py-6"
+        contentContainerStyle={{ gap: 24, paddingBottom: 32 }}
+      >
         <View style={{ gap: 8 }}>
           <Text className="font-display text-neutral" style={{ fontSize: 24 }}>
             Alternatif yang Lebih Aman

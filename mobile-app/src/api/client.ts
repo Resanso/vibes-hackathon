@@ -205,6 +205,16 @@ export function triggerReminders(
   return trpcMutation<{ sent: number }>("reminders.triggerNow", { channel });
 }
 
+// Testing-only escape hatch — creates a RiskEntry with firstDueDate set to
+// tomorrow (not the usual +1 calendar month), so triggerReminders() finds
+// something to send without needing an artificially widened
+// REMINDER_WINDOW_DAYS. See ProfileTab.
+export function debugCreateDueEntry(phone: string): Promise<{ id: string; firstDueDate: string }> {
+  return trpcMutation<{ id: string; firstDueDate: string }>("reminders.debugCreateDueEntry", {
+    phone,
+  });
+}
+
 // Switches which service sends this student their reminders/quick-consult
 // replies. Switching to "telegram" fails (PRECONDITION_FAILED) if the
 // student hasn't linked a Telegram chat yet via the bot's /start flow.

@@ -11,7 +11,6 @@ import {
   type TrackingStatus,
   type TrendEntry,
 } from "../api/client";
-import { DecorativeCircles } from "../components/StepProgressHeader";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { SummaryCallout } from "../components/SummaryCallout";
 import { StatusBadge } from "../components/StatusBadge";
@@ -156,7 +155,7 @@ export function SafetyDashboard() {
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
         className="flex-1 px-6 py-6"
-        contentContainerStyle={{ gap: 24 }}
+        contentContainerStyle={{ gap: 24, paddingBottom: 32 }}
       >
         <View className="flex-row items-start justify-between">
           <Image
@@ -165,10 +164,7 @@ export function SafetyDashboard() {
             resizeMode="contain"
             accessibilityLabel="Nera"
           />
-          <View className="flex-row items-center" style={{ gap: 8 }}>
-            <DecorativeCircles />
-            <Bell color={colors.neutral} size={20} style={{ opacity: 0.5 }} />
-          </View>
+          <Bell color={colors.neutral} size={20} style={{ opacity: 0.5 }} />
         </View>
 
         <View style={{ gap: 4 }}>
