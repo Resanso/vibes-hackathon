@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Nera",
-    "slug": "nera",
+    "slug": "test134",
     "scheme": "nera",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -25,7 +25,8 @@
       "package": "com.nera.app",
       "permissions": [
         "android.permission.PACKAGE_USAGE_STATS"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro"
@@ -36,9 +37,8 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "4b014994-d96f-4215-98f3-7c99bbb47164"
+        "projectId": "0da92bb3-d2f2-4db8-84fd-e5ad908dcfba"
       }
-    },
-    "owner": "resanso"
+    }
   }
 }

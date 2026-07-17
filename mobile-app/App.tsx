@@ -15,6 +15,7 @@ import "./global.css";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import type { RootStackParamList } from "./src/navigation/RootNavigator";
 import { useSessionStore } from "./src/store/sessionStore";
+import { checkAndRequestNotificationPermission } from "./src/services/NotificationService";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +33,8 @@ export default function App() {
 
   useEffect(() => {
     void restoreSession();
+    // Meminta akses notifikasi ketika aplikasi pertama kali dijalankan
+    void checkAndRequestNotificationPermission();
   }, [restoreSession]);
 
   const ready = fontsLoaded && !isRestoring;
