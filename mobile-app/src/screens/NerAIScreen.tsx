@@ -102,7 +102,8 @@ export function NerAIScreen() {
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        keyboardVerticalOffset={Platform.OS === "android" ? 24 : 0}
       >
         <View className="border-b border-slate-200 px-6 py-4">
           <Text className="font-display text-neutral" style={{ fontSize: 24 }}>
@@ -170,9 +171,10 @@ export function NerAIScreen() {
 
         <View className="border-t border-slate-200 px-4 py-3 flex-row items-center bg-white">
           <TextInput
-            className="flex-1 rounded-full border border-slate-300 px-4 py-2 font-body text-neutral mr-2"
-            style={{ minHeight: 44, maxHeight: 100 }}
+            className="flex-1 rounded-full border border-slate-300 px-4 py-2 font-body mr-2"
+            style={{ minHeight: 44, maxHeight: 100, color: colors.neutral }}
             placeholder="Tanya Coach NerAI..."
+            placeholderTextColor="#94a3b8"
             value={inputText}
             onChangeText={setInputText}
             multiline
