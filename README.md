@@ -1,100 +1,76 @@
-# Nera
+# `Nera`
 
-Monorepo — one git repo, one sub-project folder per platform. Built for Garuda
-Hacks 7.0 (Track 2: Safety). Structure favors speed over ceremony: each
-sub-project is independently runnable, with its own dependencies and lockfile.
+![Banner GitHub](banner-github.png)
 
-## Structure
+**AI-powered Financial Safety Platform That Helps Young Adults Avoid Debt Traps**
 
-```
-vibes-hackathon/
-├── CLAUDE.md                    ← shared Claude Code guidance (all sub-projects)
-├── docs/deployment.md           ← VPS/Nginx/PM2/Docker deployment notes
-├── .claude/
-│   ├── settings.json            ← shared hooks/permissions, auto-detects sub-projects
-│   ├── rules/
-│   │   ├── design.md            ← design PRINCIPLES (platform-agnostic)
-│   │   └── product-context.md   ← product rationale, 7-step flow, privacy principle
-│   └── skills/                  ← workflows shared across sub-projects
-├── .github/workflows/           ← CI (per-sub-project lint/typecheck jobs)
-├── backend/                     ← Next.js API-only (tRPC + Prisma), no dashboard pages
-│   └── CLAUDE.md
-├── mobile-app/                  ← React Native (Expo) — the only frontend (not scaffolded yet)
-│   ├── CLAUDE.md
-│   └── .claude/agents/          ← screen-builder, design-reviewer, token-keeper subagents
-└── whatsapp-service/            ← Node.js + Baileys (WhatsApp reminders/quick consult)
-    └── CLAUDE.md
-```
+---
 
-`backend/` and `whatsapp-service/` have real code; `mobile-app/` is still a
-placeholder with just a `CLAUDE.md` (and its design subagents) until
-scaffolded. There is no separate web dashboard — `backend` is API-only, and
-the only UI lives in `mobile-app`.
+## Team
 
-No shared workspace tooling (npm/pnpm workspaces) is used unless code actually needs to
-be shared between sub-projects — see `CLAUDE.md` for the reasoning.
+| **Name**                      | **Role**                 |
+| ----------------------------- | ------------------------ |
+| Adrian Putra Pratama Badjideh | Lead, Product            |
+| Resan So                      | Mobile Developer & UI/UX |
+| Muhammad Karov Ardava Barus   | AI Engineer              |
 
-## Running `backend`
+---
 
-Set `DATABASE_URL` to your Postgres connection string — see
-`docs/deployment.md` for the self-hosted VPS/Docker setup.
+## 1. Problem: The Predatory Lending Trap
 
-```bash
-cd backend
-npm install
+In modern digital economies, users often fall into high-risk borrowing scenarios (like toxic online loans) due to a lack of financial oversight. The main obstacle is the absence of early detection systems that warn users before they make fatal financial commitments. **Nera** exists to democratize financial safety through an intelligent and proactive infrastructure.
 
-cp .env.example .env
-# set DATABASE_URL (and MAIA_API_KEY / MAIA_BASE_URL for AI calls)
+## 2. Solution: Edge AI & Smart Decision Support
 
-npm run db:push   # sync Prisma schema to the database
-npm run dev        # start the dev server (Turbopack) at http://localhost:3000
-```
+**Nera** is a premium mobile solution that combines financial intelligence with state-of-the-art AI technology:
 
-Other commands (run from inside `backend/`, or via `npm --prefix backend run <script>`
-from the repo root):
+- **Privacy-First Architecture:** All AI inference for threat detection runs locally on the device (Edge Computing), ensuring sensitive notification data is never sent to the cloud.
+- **Automated Risk Profiling:** Calculates a Survival Check score to determine the exact threshold of a user's safe leverage.
+- **Micro-Scholarship Engine:** An automated engine that queries and processes accessible funding alternatives to minimize toxic loan dependency.
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Dev server (`next dev --turbo`) |
-| `npm run build` | Production build |
-| `npm run start` | Run the production build |
-| `npm run check` | Lint + typecheck (`next lint && tsc --noEmit`) |
-| `npm run lint` / `lint:fix` | Lint only / lint with auto-fix |
-| `npm run typecheck` | Typecheck only |
-| `npm run format:check` / `format:write` | Prettier check / write |
-| `npm run db:push` | Push Prisma schema to the database (no migration files) |
-| `npm run db:generate` | Create a Prisma migration in dev |
-| `npm run db:studio` | Open Prisma Studio |
+## 3. Tech Stack & Engineering Excellence
 
-No test runner is wired up yet in `backend`. See `backend/CLAUDE.md` for full stack
-detail, architecture, and conventions.
+We use a monorepo architecture optimized for a seamless end-to-end ecosystem:
 
-## Running `whatsapp-service`
+| Component       | Technology              | Role                                                         |
+| :-------------- | :---------------------- | :----------------------------------------------------------- |
+| **Mobile App**  | **Expo (React Native)** | Premium cross-platform UI/UX with smooth interactions.       |
+| **Backend**     | **Next.js 14**          | Analytical dashboard and asynchronous REST APIs.             |
+| **AI Engine**   | **ONNX Runtime**        | Embedded `.onnx` model (threat_detection) running on-device. |
+| **API Layer**   | **tRPC**                | Type-safe APIs bridging the client and server.               |
+| **Database**    | **Prisma ORM & SQLite** | Reliable relational database blueprints.                     |
+| **E2E Testing** | **Maestro**             | Automated UI workflows simulating live borrowing scenarios.  |
 
-```bash
-cd whatsapp-service
-npm install
+## 4. Key Features
 
-cp .env.example .env
-# set BACKEND_URL, SHARED_API_KEY (must match backend's), DATABASE_URL
+### A. Edge AI Threat Detection
 
-npm run db:push   # own Postgres tables: WhatsappCreds, WhatsappSignalKey
-npm run dev        # scan the printed QR code with WhatsApp on first run
-```
+Instantaneous risk classification and predictive anomalies that detect aggressive loan communication patterns directly from Android notifications using a local `.onnx` model.
 
-See `whatsapp-service/CLAUDE.md` for the quick-consult command format,
-reminder scheduling, and session-storage gotchas.
+### B. Safety Dashboard & Survival Check
 
-## Tech stack per folder
+Comprehensive score assessment determining the exact threshold of a user's safe leverage and overall financial health.
 
-| Folder | Stack |
-| --- | --- |
-| `backend/` | Next.js 15 (App Router) API-only, TypeScript, tRPC v11, Prisma 6 + PostgreSQL, `@tanstack/react-query` v5, MAIA Router for AI explanations |
-| `mobile-app/` | React Native (Expo), TypeScript, React Navigation, Zustand, NativeWind — not scaffolded yet |
-| `whatsapp-service/` | Node.js (TypeScript, ESM), `baileys` (unscoped package), Prisma 6 + PostgreSQL, `node-cron` |
+### C. AI Decision Support
 
-## Git workflow
+Integration with a smart automated Next.js/tRPC analytical backend to query alternative financial relief options.
 
-See root `CLAUDE.md` → **Git workflow (monorepo)** for branch naming
-(`feature/<area>-<slug>`), what "passed" means per sub-project, and the confirmation
-rule before any commit/merge/push.
+### D. Micro-Scholarship Scraper
+
+Automated engine that queries and processes accessible funding alternatives to minimize dependency on high-interest loans.
+
+## 5. Getting Started (Local Development)
+
+### Backend:
+
+1. `cd backend`
+2. `cp .env.example .env`
+3. `npm install`
+4. `npx prisma db push`
+5. `npm run dev`
+
+### Mobile App:
+
+1. `cd mobile-app`
+2. `npm install`
+3. `npx expo start`
