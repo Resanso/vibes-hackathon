@@ -68,6 +68,13 @@ interface SessionState {
   setSession: (profile: Profile, token: string) => Promise<void>;
   restoreSession: () => Promise<void>;
   clearSession: () => Promise<void>;
+  // Testing-only: flips onboardingCompletedAt to null locally, without
+  // touching the token/backend — stays logged in, just lets ProfileTab's
+  // "Reset Onboarding" button send the user back through
+  // FinancialSurvivalCheck onward. Doesn't persist server-side, so a fresh
+  // app restart (restoreSession) still lands on MainTabs if the backend's
+  // onboardingCompletedAt was never actually cleared.
+  markOnboardingIncomplete: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -111,11 +118,15 @@ export const useSessionStore = create<SessionState>((set) => ({
     }
   },
 
-  // Used by both a real "Keluar" action and ProfileTab's testing-only
-  // "Reset Onboarding" button — same effect either way: forget the local
-  // session so the app boots back into Login next time.
+  // Real "Keluar" action — forgets the local session so the app boots back
+  // into Login next time. Not used by "Reset Onboarding" (see
+  // markOnboardingIncomplete below) — that one stays logged in.
   clearSession: async () => {
     await safeDeleteItem(TOKEN_KEY);
     set({ phone: null, name: null, token: null, onboardingCompletedAt: null });
+  },
+
+  markOnboardingIncomplete: () => {
+    set({ onboardingCompletedAt: null });
   },
 }));

@@ -68,7 +68,14 @@ export async function chatWithCoach(phone: string, userMessage: string): Promise
 
   try {
     const result = await generateText({
-      model: maia("deepseek-v4-flash"),
+      // .chat(), not the bare maia("...") call — that defaults to OpenAI's
+      // newer Responses API (/v1/responses), a format most third-party
+      // OpenAI-compatible gateways (including MAIA Router, presumably)
+      // don't implement. .chat() targets /v1/chat/completions, the
+      // universally-supported format — same one explainRisk.ts already
+      // uses via the raw `openai` package. Confirmed via VPS logs
+      // (2026-07-17): requests were hitting /v1/responses before this fix.
+      model: maia.chat("deepseek-v4-flash"),
       system: SYSTEM_PROMPT,
       messages: [
         ...history.map((m) => ({

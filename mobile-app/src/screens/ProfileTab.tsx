@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import {
   ApiError,
+  debugCreateDueEntry,
   getProfile,
   setNotificationChannel,
   triggerReminders,
@@ -14,6 +15,7 @@ import {
   type Profile,
 } from "../api/client";
 import { SecondaryButton } from "../components/SecondaryButton";
+import { SegmentedToggle } from "../components/SegmentedToggle";
 import { StatusToast } from "../components/StatusToast";
 import { colors } from "../theme/colors";
 import type { MainTabParamList } from "../navigation/MainTabNavigator";
@@ -65,6 +67,7 @@ export function ProfileTab({ navigation }: Props) {
   const phone = useSessionStore((state) => state.phone);
   const name = useSessionStore((state) => state.name);
   const clearSession = useSessionStore((state) => state.clearSession);
+  const markOnboardingIncomplete = useSessionStore((state) => state.markOnboardingIncomplete);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -76,6 +79,33 @@ export function ProfileTab({ navigation }: Props) {
   const [channelResult, setChannelResult] = useState<
     { variant: "success" | "error"; message: string } | null
   >(null);
+  const [creatingDueEntry, setCreatingDueEntry] = useState(false);
+  const [dueEntryResult, setDueEntryResult] = useState<
+    { variant: "success" | "error"; message: string } | null
+  >(null);
+
+  // Testing-only: creates a RiskEntry due tomorrow so "Kirim reminder
+  // cicilan sekarang" below has something to actually send, without
+  // widening REMINDER_WINDOW_DAYS on either messaging service.
+  async function handleCreateDueEntry() {
+    if (!phone) return;
+    setCreatingDueEntry(true);
+    setDueEntryResult(null);
+    try {
+      await debugCreateDueEntry(phone);
+      setDueEntryResult({
+        variant: "success",
+        message: "Cicilan dummy jatuh tempo besok berhasil dibuat.",
+      });
+    } catch {
+      setDueEntryResult({
+        variant: "error",
+        message: "Gagal membuat cicilan dummy. Coba lagi sebentar lagi.",
+      });
+    } finally {
+      setCreatingDueEntry(false);
+    }
+  }
 
   async function handleTriggerReminders() {
     const channel = profile?.notificationChannel ?? "whatsapp";
@@ -140,16 +170,28 @@ export function ProfileTab({ navigation }: Props) {
     void Linking.openURL(`https://t.me/${TELEGRAM_BOT_USERNAME}`);
   }
 
-  // Same effect for a real "Keluar" tap and the testing-only "Reset
-  // Onboarding" use case — clears the local session so the app boots back
-  // into Login. The backend account itself isn't touched: logging back in
-  // with the same email/password immediately resumes at MainTabs (if
-  // onboardingCompletedAt is set) or FinancialSurvivalCheck otherwise.
+  // Clears the local session so the app boots back into Login. The backend
+  // account itself isn't touched: logging back in with the same
+  // email/password immediately resumes at MainTabs (since
+  // onboardingCompletedAt is still set server-side) — this is NOT how to
+  // revisit onboarding, see handleResetOnboarding below for that.
   async function handleLogout() {
     await clearSession();
     navigation
       .getParent<NativeStackNavigationProp<RootStackParamList>>()
       ?.reset({ index: 0, routes: [{ name: "Login" }] });
+  }
+
+  // Testing-only: stays logged in, just flips onboardingCompletedAt to null
+  // locally (see markOnboardingIncomplete) and jumps straight to
+  // FinancialSurvivalCheck so the onboarding steps can be filled again.
+  // Submitting FinancialSurvivalCheck again re-sets onboardingCompletedAt
+  // server-side, same as the first time through.
+  function handleResetOnboarding() {
+    markOnboardingIncomplete();
+    navigation
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.reset({ index: 0, routes: [{ name: "FinancialSurvivalCheck" }] });
   }
 
   useEffect(() => {
@@ -168,7 +210,10 @@ export function ProfileTab({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView className="flex-1 px-6 py-6" contentContainerStyle={{ gap: 24 }}>
+      <ScrollView
+        className="flex-1 px-6 py-6"
+        contentContainerStyle={{ gap: 24, paddingBottom: 32 }}
+      >
         <View
           className="items-center rounded-2xl px-6 py-8"
           style={{ backgroundColor: `${colors.primary}0D`, gap: 12 }}
@@ -230,24 +275,15 @@ export function ProfileTab({ navigation }: Props) {
               pinjol tetap lewat WhatsApp berapa pun channel yang dipilih di sini.
             </Text>
 
-            <View className="flex-row" style={{ gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <SecondaryButton
-                  label={profile.notificationChannel === "whatsapp" ? "✓ WhatsApp" : "Pakai WhatsApp"}
-                  onPress={() => handleSwitchChannel("whatsapp")}
-                  disabled={switchingChannel || profile.notificationChannel === "whatsapp"}
-                  testID="channel-whatsapp-button"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <SecondaryButton
-                  label={profile.notificationChannel === "telegram" ? "✓ Telegram" : "Pakai Telegram"}
-                  onPress={() => handleSwitchChannel("telegram")}
-                  disabled={switchingChannel || profile.notificationChannel === "telegram"}
-                  testID="channel-telegram-button"
-                />
-              </View>
-            </View>
+            <SegmentedToggle
+              options={[
+                { value: "whatsapp", label: "WhatsApp", testID: "channel-whatsapp-button" },
+                { value: "telegram", label: "Telegram", testID: "channel-telegram-button" },
+              ]}
+              value={profile.notificationChannel}
+              onChange={handleSwitchChannel}
+              disabled={switchingChannel}
+            />
 
             {!profile.telegramChatId ? (
               <View className="flex-row items-center" style={{ gap: 8 }}>
@@ -277,8 +313,28 @@ export function ProfileTab({ navigation }: Props) {
             Testing
           </Text>
           <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
-            Picu pengecekan reminder cicilan sekarang lewat WhatsApp, tanpa menunggu jadwal
-            harian otomatis.
+            Belum ada cicilan yang jatuh tempo? Buat satu dummy dulu (jatuh tempo besok),
+            baru picu reminder-nya.
+          </Text>
+          <SecondaryButton
+            label={creatingDueEntry ? "Membuat..." : "Buat cicilan jatuh tempo (debug)"}
+            onPress={handleCreateDueEntry}
+            disabled={creatingDueEntry}
+            testID="debug-create-due-entry-button"
+          />
+          {dueEntryResult ? (
+            <StatusToast
+              message={dueEntryResult.message}
+              variant={dueEntryResult.variant === "success" ? "success" : "error"}
+              onDismiss={() => setDueEntryResult(null)}
+            />
+          ) : null}
+
+          <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
+
+          <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+            Picu pengecekan reminder cicilan sekarang lewat channel yang aktif, tanpa
+            menunggu jadwal harian otomatis.
           </Text>
           <SecondaryButton
             label={triggering ? "Mengirim..." : "Kirim reminder cicilan sekarang"}
@@ -293,6 +349,18 @@ export function ProfileTab({ navigation }: Props) {
               onDismiss={() => setTriggerResult(null)}
             />
           ) : null}
+
+          <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
+
+          <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+            Isi ulang data onboarding dari awal (tetap login, tidak sama
+            dengan Keluar).
+          </Text>
+          <SecondaryButton
+            label="Reset Onboarding"
+            onPress={handleResetOnboarding}
+            testID="reset-onboarding-button"
+          />
         </View>
 
         <View className="rounded-2xl border px-4 py-4" style={{ borderColor: "#CBD5E1", gap: 12 }}>
