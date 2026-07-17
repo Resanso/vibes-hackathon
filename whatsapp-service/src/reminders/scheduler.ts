@@ -29,6 +29,12 @@ export async function sendDueReminders(
 
   logger.info({ count: due.length }, "Sending due-installment reminders");
 
+  // Counts actual successful sends, not just how many were due — a
+  // sock.sendMessage rejection (e.g. the WhatsApp session silently died
+  // between reconnect attempts) must not be reported as "sent" just because
+  // the loop reached that reminder.
+  let sent = 0;
+
   for (const reminder of due) {
     const jid = `${reminder.phone}@s.whatsapp.net`;
     const dueDate = new Date(reminder.dueDate).toLocaleDateString("id-ID", {
@@ -44,6 +50,7 @@ export async function sendDueReminders(
 
     try {
       await sock.sendMessage(jid, { text });
+      sent++;
     } catch (error) {
       logger.error({ error, phone: reminder.phone }, "Failed to send reminder");
     }
@@ -51,7 +58,7 @@ export async function sendDueReminders(
     await sleep(randomDelayMs());
   }
 
-  return due.length;
+  return sent;
 }
 
 // Registered exactly once at startup (see index.ts) — looks up whatever

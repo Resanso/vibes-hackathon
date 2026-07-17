@@ -31,6 +31,10 @@ export async function sendCheckInReminders(sock: WASocket, logger: Logger): Prom
 
   logger.info({ count: pending.length }, "Sending daily check-in reminders");
 
+  // Counts actual successful sends, not just how many were pending — see
+  // scheduler.ts's sendDueReminders for why.
+  let sent = 0;
+
   for (const item of pending) {
     const jid = `${item.phone}@s.whatsapp.net`;
 
@@ -44,6 +48,7 @@ export async function sendCheckInReminders(sock: WASocket, logger: Logger): Prom
 
     try {
       await sock.sendMessage(jid, { text });
+      sent++;
     } catch (error) {
       logger.error({ error, phone: item.phone }, "Failed to send check-in reminder");
     }
@@ -51,7 +56,7 @@ export async function sendCheckInReminders(sock: WASocket, logger: Logger): Prom
     await sleep(randomDelayMs());
   }
 
-  return pending.length;
+  return sent;
 }
 
 // Registered exactly once at startup (see index.ts) — looks up whatever
