@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pinjol_blocker_accessibility_description">Nera (Debug/Proof-of-concept): mendeteksi kapan aplikasi pinjol tertentu di daftar pantauan dibuka, lalu mengarahkan kembali ke home screen untuk menguji fitur pemblokiran otomatis. Tidak membaca isi layar atau input apapun.</string>
+</resources>

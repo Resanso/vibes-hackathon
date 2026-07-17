@@ -183,6 +183,27 @@ export function listRecommendations(): Promise<Recommendation[]> {
   return trpcQuery<Recommendation[]>("recommendations.list", undefined);
 }
 
+export interface Scholarship {
+  id: string;
+  title: string;
+  summary: string;
+  sourceName: string;
+  sourceUrl: string;
+  publishedAt: string; // ISO string, not revived to Date — see file header
+  scrapedAt: string;
+}
+
+export function listScholarships(limit = 20): Promise<Scholarship[]> {
+  return trpcQuery<Scholarship[]>("scholarships.list", { limit });
+}
+
+// Testing-only, same pattern as debugResetCheckIn/triggerReminders below —
+// no scraping cron exists yet, this is how the list actually gets
+// populated for now (see ProfileTab's "Refresh Beasiswa" debug button).
+export function refreshScholarships(): Promise<{ upserted: number; errors: string[] }> {
+  return trpcMutation<{ upserted: number; errors: string[] }>("scholarships.refresh", undefined);
+}
+
 export interface TrendEntry {
   createdAt: string; // ISO string, not revived to Date — see file header
   riskScore: number;

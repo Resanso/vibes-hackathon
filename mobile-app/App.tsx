@@ -1,7 +1,7 @@
 import "react-native-gesture-handler";
 import { useCallback, useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, type LinkingOptions } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import {
@@ -18,6 +18,19 @@ import { useSessionStore } from "./src/store/sessionStore";
 import { checkAndRequestNotificationPermission } from "./src/services/NotificationService";
 
 void SplashScreen.preventAutoHideAsync();
+
+// Only PinjolBlocked is deep-linkable — the nera:// scheme is used
+// exclusively by PinjolBlockerAccessibilityService to bring this screen to
+// the foreground (see modules/pinjol-blocker), not a general-purpose
+// linking setup for the rest of the app.
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ["nera://"],
+  config: {
+    screens: {
+      PinjolBlocked: "blocked",
+    },
+  },
+};
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -62,7 +75,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <NavigationContainer onReady={onReady}>
+      <NavigationContainer onReady={onReady} linking={linking}>
         <RootNavigator initialRouteName={initialRouteName} />
       </NavigationContainer>
     </SafeAreaProvider>

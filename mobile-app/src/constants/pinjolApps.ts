@@ -15,4 +15,5 @@ export const PINJOL_APPS: PinjolApp[] = [
   { packageName: "com.finaccel.android", label: "Kredivo" },
   { packageName: "com.akulaku.finance", label: "Akulaku" },
   { packageName: "com.smartfren.kreditpintar", label: "Kredit Pintar" },
+  { packageName: "com.adakami.id", label: "AdaKami" },
 ];

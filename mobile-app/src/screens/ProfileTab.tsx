@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Linking, Platform, SafeAreaView, ScrollView, Text, View } from "react-native";
 import { Calendar1, CreditCard, Phone, Send, User, Users, Utensils, Wallet } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
 
 import {
   ApiError,
   debugResetCheckIn,
   getProfile,
+  refreshScholarships,
   setNotificationChannel,
   triggerReminders,
   type NotificationChannel,
@@ -21,6 +23,14 @@ import { colors } from "../theme/colors";
 import type { MainTabParamList } from "../navigation/MainTabNavigator";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useSessionStore } from "../store/sessionStore";
+import { PINJOL_APPS } from "../constants/pinjolApps";
+import {
+  hasAccessibilityPermission,
+  isBlockingEnabled,
+  openAccessibilitySettings,
+  setBlockingConfig,
+} from "../../modules/pinjol-blocker";
+import { setPinjolUsageResetMarker } from "../utils/pinjolUsageResetMarker";
 
 // The actual bot registered for this project via @BotFather — see
 // telegram-service/CLAUDE.md. Hardcoded since there's only ever one bot for
@@ -84,6 +94,65 @@ export function ProfileTab({ navigation }: Props) {
     { variant: "success" | "error"; message: string } | null
   >(null);
 
+  const isAndroid = Platform.OS === "android";
+  const [blockerAccessGranted, setBlockerAccessGranted] = useState(false);
+  const [blockingEnabled, setBlockingEnabledState] = useState(false);
+
+  // useFocusEffect, not useEffect — MainTabNavigator keeps every tab screen
+  // mounted (switching tabs doesn't unmount/remount), so a mount-only check
+  // here would go stale the moment the user leaves Profil to grant the
+  // Accessibility permission in system Settings and comes back. Re-checking
+  // on every focus catches that return trip.
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAndroid) return;
+      hasAccessibilityPermission().then(setBlockerAccessGranted);
+      isBlockingEnabled().then(setBlockingEnabledState);
+    }, [isAndroid]),
+  );
+
+  // Toggle IS the test — no anomaly signal wired up yet (teammate's
+  // algorithm is in progress), so turning this on directly arms the
+  // AccessibilityService for every app in PINJOL_APPS. See root
+  // .claude/rules/product-context.md's "Exception: consent-based pinjol app
+  // blocking" section for the scope boundary.
+  function handleToggleBlocking(value: "on" | "off") {
+    const enabled = value === "on";
+    setBlockingEnabledState(enabled);
+    setBlockingConfig(
+      enabled,
+      PINJOL_APPS.map((app) => app.packageName),
+    );
+  }
+
+  const [resettingPinjolUsage, setResettingPinjolUsage] = useState(false);
+  const [resetPinjolUsageResult, setResetPinjolUsageResult] = useState<
+    { variant: "success" | "error"; message: string } | null
+  >(null);
+
+  // UsageStatsManager data is OS-owned — this can't clear real device
+  // history, only move the local "since" marker SafetyDashboard reads from
+  // forward to now, so testers get a clean 0/0 baseline for a fresh run
+  // instead of carrying over earlier test sessions' opens.
+  async function handleResetPinjolUsage() {
+    setResettingPinjolUsage(true);
+    setResetPinjolUsageResult(null);
+    try {
+      await setPinjolUsageResetMarker(Date.now());
+      setResetPinjolUsageResult({
+        variant: "success",
+        message: "Riwayat aktivitas pinjol di dashboard direset ke sekarang.",
+      });
+    } catch {
+      setResetPinjolUsageResult({
+        variant: "error",
+        message: "Gagal reset. Coba lagi sebentar lagi.",
+      });
+    } finally {
+      setResettingPinjolUsage(false);
+    }
+  }
+
   // Testing-only: flips confirmedToday back to false/null for the active
   // loan tracking, without waiting for the next calendar day — lets the
   // "belum menyisihkan hari ini" warning + reminder flow be re-tested
@@ -128,6 +197,36 @@ export function ProfileTab({ navigation }: Props) {
       });
     } finally {
       setTriggering(false);
+    }
+  }
+
+  const [refreshingScholarships, setRefreshingScholarships] = useState(false);
+  const [refreshScholarshipsResult, setRefreshScholarshipsResult] = useState<
+    { variant: "success" | "error"; message: string } | null
+  >(null);
+
+  // No scraping cron exists yet — this is how the "Alternatif" tab's
+  // scholarship list actually gets populated/refreshed for now, same
+  // manual-trigger pattern as handleTriggerReminders above.
+  async function handleRefreshScholarships() {
+    setRefreshingScholarships(true);
+    setRefreshScholarshipsResult(null);
+    try {
+      const { upserted, errors } = await refreshScholarships();
+      setRefreshScholarshipsResult({
+        variant: errors.length > 0 && upserted === 0 ? "error" : "success",
+        message:
+          errors.length > 0
+            ? `${upserted} beasiswa tersimpan, sebagian sumber gagal: ${errors.join("; ")}`
+            : `${upserted} beasiswa tersimpan/diperbarui.`,
+      });
+    } catch {
+      setRefreshScholarshipsResult({
+        variant: "error",
+        message: "Gagal refresh data beasiswa. Coba lagi sebentar lagi.",
+      });
+    } finally {
+      setRefreshingScholarships(false);
     }
   }
 
@@ -364,6 +463,27 @@ export function ProfileTab({ navigation }: Props) {
           <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
 
           <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+            Ambil data beasiswa terbaru dari sumber resmi untuk ditampilkan di tab
+            Alternatif. Belum otomatis terjadwal — jalankan manual kalau daftarnya
+            kosong atau ingin update.
+          </Text>
+          <SecondaryButton
+            label={refreshingScholarships ? "Mengambil data..." : "Refresh Data Beasiswa (debug)"}
+            onPress={handleRefreshScholarships}
+            disabled={refreshingScholarships}
+            testID="refresh-scholarships-button"
+          />
+          {refreshScholarshipsResult ? (
+            <StatusToast
+              message={refreshScholarshipsResult.message}
+              variant={refreshScholarshipsResult.variant === "success" ? "success" : "error"}
+              onDismiss={() => setRefreshScholarshipsResult(null)}
+            />
+          ) : null}
+
+          <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
+
+          <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
             Isi ulang data onboarding dari awal (tetap login, tidak sama
             dengan Keluar).
           </Text>
@@ -373,6 +493,81 @@ export function ProfileTab({ navigation }: Props) {
             testID="reset-onboarding-button"
           />
         </View>
+
+        {isAndroid ? (
+          <View
+            className="rounded-2xl border px-4 py-4"
+            style={{ borderColor: "#CBD5E1", gap: 12 }}
+            testID="pinjol-blocker-card"
+          >
+            <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.5 }}>
+              Blokir App Pinjol (Debug/Proof-of-Concept)
+            </Text>
+            <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+              Prototipe pemblokiran otomatis — belum tersambung ke algoritma deteksi
+              anomali (masih dikerjakan). Nyalakan toggle ini untuk tes manual: begitu
+              aplikasi pinjol di daftar pantauan dibuka, Nera langsung mengarahkan
+              kembali ke home screen.
+            </Text>
+
+            {!blockerAccessGranted ? (
+              <>
+                <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+                  Butuh izin Accessibility Service — izin sistem yang lebih sensitif
+                  dari Usage Access, aktifkan manual di Pengaturan {'>'} Aksesibilitas
+                  {' > '}Nera.
+                </Text>
+                <SecondaryButton
+                  label="Buka Pengaturan Aksesibilitas"
+                  onPress={() => {
+                    openAccessibilitySettings();
+                  }}
+                  testID="pinjol-blocker-open-settings"
+                />
+              </>
+            ) : (
+              <SegmentedToggle
+                options={[
+                  { value: "off", label: "Nonaktif", testID: "pinjol-blocker-off" },
+                  { value: "on", label: "Aktif (Testing)", testID: "pinjol-blocker-on" },
+                ]}
+                value={blockingEnabled ? "on" : "off"}
+                onChange={handleToggleBlocking}
+              />
+            )}
+          </View>
+        ) : null}
+
+        {isAndroid ? (
+          <View
+            className="rounded-2xl border px-4 py-4"
+            style={{ borderColor: "#CBD5E1", gap: 12 }}
+            testID="pinjol-usage-reset-card"
+          >
+            <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.5 }}>
+              Aktivitas App Pinjol (Debug)
+            </Text>
+            <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+              Reset baseline "Aktivitas Aplikasi Pinjol" di Beranda ke sekarang, supaya
+              hitungan buka/durasi mulai dari 0 lagi untuk sesi tes berikutnya. Ini tidak
+              menghapus riwayat asli di sistem Android — cuma mengubah titik mulai
+              hitungan yang ditampilkan di dashboard.
+            </Text>
+            <SecondaryButton
+              label={resettingPinjolUsage ? "Mereset..." : "Reset Aktivitas Pinjol (debug)"}
+              onPress={handleResetPinjolUsage}
+              disabled={resettingPinjolUsage}
+              testID="pinjol-usage-reset-button"
+            />
+            {resetPinjolUsageResult ? (
+              <StatusToast
+                message={resetPinjolUsageResult.message}
+                variant={resetPinjolUsageResult.variant === "success" ? "success" : "error"}
+                onDismiss={() => setResetPinjolUsageResult(null)}
+              />
+            ) : null}
+          </View>
+        ) : null}
 
         <View className="rounded-2xl border px-4 py-4" style={{ borderColor: "#CBD5E1", gap: 12 }}>
           <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.5 }}>

@@ -55,6 +55,37 @@ surfaced on the Financial Safety Dashboard (step 6).
 Everything else in this principle (SMS, contacts, location, general installed-app
 lists) remains out of scope, full stop — this exception does not generalize.
 
+### Exception: consent-based pinjol app blocking (Android only, proof-of-concept)
+
+Second narrow exception, added 2026-07-17, layered on top of the usage-tracking
+one above. A teammate is building the real anomaly-detection algorithm that
+should decide *when* to trigger this separately — this exception only covers
+the blocking *mechanism* itself, exposed for now as a manual debug toggle in
+`ProfileTab` so it can be tested and later wired to that algorithm's output.
+
+- Mechanism: Android `AccessibilityService` watches foreground-app change
+  events; when the foreground package matches the same fixed pinjol app list
+  from the usage-tracking exception AND the debug toggle is on, it redirects
+  to a screen inside Nera's own app explaining the block (via a `nera://`
+  deep link the service launches) — not a system `SYSTEM_ALERT_WINDOW`
+  overlay drawn on top of the other app, and not `GLOBAL_ACTION_HOME` (the
+  original version of this exception, revised 2026-07-17 once the "why was I
+  blocked" explanation was added). No reading of on-screen content beyond the
+  foreground package name.
+- Requires its own explicit consent + a separate system permission grant
+  (Accessibility Service is a materially more sensitive permission class than
+  Usage Access — Play Store restricts it to apps with a core accessibility
+  purpose). The consent copy must say plainly that this is a proof-of-concept
+  that can force-close other apps, separate from the usage-tracking consent.
+- Android only — no iOS equivalent exists; do not attempt an iOS workaround.
+- Debug/testing only, manual toggle in `ProfileTab`, not wired to any real
+  detection logic yet (that's the teammate's in-progress algorithm). Revisit
+  before demo day: this either gets a real trigger condition or gets pulled,
+  same as the usage-tracking exception above.
+- Scope stays narrow: foreground-package-name watching + home-screen redirect
+  for the fixed pinjol list only. Not screen content reading, not input
+  interception, not device-admin/MDM enrollment.
+
 ## Scope note
 
 There is no separate web dashboard / institutional portal — dropped from scope.

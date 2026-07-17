@@ -5,6 +5,7 @@ import { profileRouter } from "~/server/api/routers/profile";
 import { recommendationsRouter } from "~/server/api/routers/recommendations";
 import { remindersRouter } from "~/server/api/routers/reminders";
 import { riskRouter } from "~/server/api/routers/risk";
+import { scholarshipsRouter } from "~/server/api/routers/scholarships";
 import { simulationRouter } from "~/server/api/routers/simulation";
 import { trackingRouter } from "~/server/api/routers/tracking";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
@@ -21,6 +22,7 @@ export const appRouter = createTRPCRouter({
   simulation: simulationRouter,
   risk: riskRouter,
   recommendations: recommendationsRouter,
+  scholarships: scholarshipsRouter,
   dashboard: dashboardRouter,
   reminders: remindersRouter,
   tracking: trackingRouter,

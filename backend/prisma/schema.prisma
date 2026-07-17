@@ -152,3 +152,28 @@ model ChatMessage {
 
     @@index([phone, createdAt])
 }
+
+// Scholarship listings ingested from public sources' WordPress REST APIs
+// (see src/server/services/scholarshipScraper.ts) — surfaced in mobile-app's
+// "Alternatif" tab as a non-repayable alternative to borrowing. Nera only
+// links out to the source's own application page; it never fills out or
+// submits an application on a student's behalf (see the design discussion
+// in this feature's PR — auto-submitting third-party forms with no human
+// review of essays/documents was explicitly ruled out).
+model Scholarship {
+    id String @id @default(cuid())
+
+    title     String
+    // Plain-text excerpt (HTML tags stripped at ingest time) — short enough
+    // for a list-row description, not the full article body.
+    summary   String
+    sourceName String
+    // Unique per source article — also the ingest upsert key, so re-running
+    // the scraper updates an existing row instead of duplicating it.
+    sourceUrl String @unique
+
+    publishedAt DateTime
+    scrapedAt   DateTime @default(now())
+
+    @@index([publishedAt])
+}
