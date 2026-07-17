@@ -25,6 +25,7 @@ import {
   setPinjolUsageConsent,
   type PinjolConsentState,
 } from "../utils/pinjolUsageConsent";
+import { getPinjolUsageResetMarker } from "../utils/pinjolUsageResetMarker";
 import {
   getPinjolUsageStats,
   hasUsageAccess,
@@ -279,7 +280,9 @@ export function SafetyDashboard() {
 
     setPinjolLoading(true);
     const until = Date.now();
-    const since = until - 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = until - 7 * 24 * 60 * 60 * 1000;
+    const resetMarker = await getPinjolUsageResetMarker();
+    const since = resetMarker ? Math.max(sevenDaysAgo, resetMarker) : sevenDaysAgo;
     const stats = await getPinjolUsageStats(
       PINJOL_APPS.map((app) => app.packageName),
       since,

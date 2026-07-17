@@ -24,6 +24,10 @@ backend/*.tsbuildinfo
 mobile-app/.expo/
 mobile-app/ios/
 mobile-app/android/
+# local Expo modules (mobile-app/modules/*) keep their source under version
+# control, but Gradle's own build output for them doesn't belong in git
+mobile-app/modules/*/android/build/
+mobile-app/modules/*/android/.cxx/
 
 # whatsapp-service (Node.js / Baileys / Prisma)
 whatsapp-service/dist/

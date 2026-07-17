@@ -168,13 +168,18 @@ and say so explicitly rather than skipping the rigor.
   debt, etc.) live as local component state and go straight to the API on
   submit, not through the global store.
 - Never call any native module for installed-app enumeration, contacts, or SMS —
-  hard rule, see root `.claude/rules/product-context.md` privacy principle. The
-  **one exception** (added 2026-07-17, debug/testing only, not yet a demo
-  feature): `modules/pinjol-usage-stats` (Android-only `UsageStatsManager`
-  wrapper) reads open count + foreground time for a fixed pinjol app list,
-  gated behind an explicit in-app consent screen. Do not extend this to general
-  installed-app lists, SMS, contacts, or location — see the root doc's
-  "Exception" subsection for the exact boundary.
+  hard rule, see root `.claude/rules/product-context.md` privacy principle. Two
+  **narrow exceptions** exist (both added 2026-07-17, debug/testing only, not
+  yet demo features — see the root doc's "Exception" subsections for exact
+  boundaries): `modules/pinjol-usage-stats` (Android-only `UsageStatsManager`
+  wrapper, reads open count + foreground time for a fixed pinjol app list,
+  gated behind an in-app consent screen, surfaced on `SafetyDashboard`) and
+  `modules/pinjol-blocker` (Android-only `AccessibilityService`, watches
+  foreground-app changes and redirects to home screen when a watched pinjol
+  package is detected, manual debug toggle in `ProfileTab` — not wired to any
+  real anomaly-detection signal yet, that's a teammate's separate in-progress
+  work). Do not extend either to general installed-app lists, SMS, contacts,
+  location, screen-content reading, or input interception.
 - `SafetyDashboard` (`Beranda` tab) is the one screen judges will likely
   spend the most time on during Q&A since it's the only "dashboard" in the
   product — worth polishing more than the others if time is tight

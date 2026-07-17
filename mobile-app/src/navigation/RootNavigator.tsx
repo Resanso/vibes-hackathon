@@ -6,6 +6,7 @@ import { FinancialSurvivalCheck } from "../screens/FinancialSurvivalCheck";
 import { BorrowingScenario } from "../screens/BorrowingScenario";
 import { FinancialRiskIntelligence } from "../screens/FinancialRiskIntelligence";
 import { DecisionSupport } from "../screens/DecisionSupport";
+import { PinjolBlockedScreen } from "../screens/PinjolBlockedScreen";
 import { MainTabNavigator } from "./MainTabNavigator";
 import type { RiskAssessment } from "../api/client";
 
@@ -19,6 +20,8 @@ export type RootStackParamList = {
   FinancialRiskIntelligence: { assessment: RiskAssessment; standalone?: boolean };
   DecisionSupport: undefined;
   MainTabs: undefined;
+  // Reached via nera://blocked?app=<packageName> — see PinjolBlockedScreen.tsx
+  PinjolBlocked: { app?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -50,6 +53,7 @@ export function RootNavigator({ initialRouteName }: RootNavigatorProps) {
       />
       <Stack.Screen name="DecisionSupport" component={DecisionSupport} />
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen name="PinjolBlocked" component={PinjolBlockedScreen} />
     </Stack.Navigator>
   );
 }
