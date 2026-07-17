@@ -1,9 +1,9 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { BookOpen, CircleUser, CirclePlus, Compass, House } from "lucide-react-native";
+import { BookOpen, CircleUser, CirclePlus, Compass, House, MessageCircle } from "lucide-react-native";
 
 import { SafetyDashboard } from "../screens/SafetyDashboard";
 import { AlternativesTab } from "../screens/AlternativesTab";
-import { EducationPlaceholder } from "../screens/EducationPlaceholder";
+import { NerAIScreen } from "../screens/NerAIScreen";
 import { ProfileTab } from "../screens/ProfileTab";
 import { colors } from "../theme/colors";
 
@@ -68,9 +68,10 @@ export function MainTabNavigator() {
       />
       <Tab.Screen
         name="Edukasi"
-        component={EducationPlaceholder}
+        component={NerAIScreen}
         options={{
-          tabBarIcon: ({ color, size }) => <BookOpen color={color} size={size} />,
+          tabBarLabel: "NerAI",
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
         }}
       />
       <Tab.Screen

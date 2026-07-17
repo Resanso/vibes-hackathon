@@ -240,3 +240,19 @@ export function checkInTracking(phone: string): Promise<unknown> {
 export function getTrackingStatus(phone: string): Promise<TrackingStatus | null> {
   return trpcQuery<TrackingStatus | null>("tracking.status", { phone });
 }
+
+export interface ChatMessage {
+  id: string;
+  phone: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+export function getChatHistory(phone: string): Promise<ChatMessage[]> {
+  return trpcQuery<ChatMessage[]>("chat.history", { phone });
+}
+
+export function sendChatMessage(phone: string, message: string): Promise<{ reply: string }> {
+  return trpcMutation<{ reply: string }>("chat.message", { phone, message });
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Calendar1, CircleCheck, FileText, ShieldCheck, Wallet } from "lucide-react-native";
 
@@ -68,8 +69,8 @@ export function FinancialRiskIntelligence({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
-        className="flex-1 px-6 py-6"
-        contentContainerStyle={{ gap: 24 }}
+        className="flex-1 px-6 pt-6"
+        contentContainerStyle={{ gap: 24, paddingBottom: 100 }}
       >
         <BackButton testID="fri-back-button" onPress={() => navigation.goBack()} />
 
