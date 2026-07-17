@@ -208,7 +208,7 @@ export function Register({ navigation }: Props) {
             ) : null}
           </View>
 
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 12, paddingBottom: 24 }}>
             <PrimaryButton
               testID="register-submit-button"
               label={submitting ? "Mendaftar..." : "Daftar"}
