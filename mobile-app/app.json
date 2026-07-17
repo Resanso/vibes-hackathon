@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Nera",
-    "slug": "test134",
+    "slug": "nera",
     "scheme": "nera",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -33,12 +33,15 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withNotificationService",
+      "./plugins/withOnnxruntimePackage"
     ],
     "extra": {
       "eas": {
-        "projectId": "0da92bb3-d2f2-4db8-84fd-e5ad908dcfba"
+        "projectId": "4b014994-d96f-4215-98f3-7c99bbb47164"
       }
-    }
+    },
+    "owner": "resanso"
   }
 }

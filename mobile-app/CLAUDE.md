@@ -179,7 +179,15 @@ and say so explicitly rather than skipping the rigor.
   package is detected, manual debug toggle in `ProfileTab` — not wired to any
   real anomaly-detection signal yet, that's a teammate's separate in-progress
   work). Do not extend either to general installed-app lists, SMS, contacts,
-  location, screen-content reading, or input interception.
+  location, screen-content reading, or input interception. A **third,
+  unblessed** feature also exists as of 2026-07-17 —
+  `src/services/NotificationService.ts` + `ThreatDetector.ts` (a teammate's
+  work, landed without going through the exception process above): an
+  Android `NotificationListenerService` reading title+text of every
+  notification from every app, permission requested silently on boot, no
+  consent screen, no scope limit to the pinjol list. See root
+  `product-context.md`'s "Known gap" entry — documented for transparency,
+  not a pattern to copy for new features.
 - `SafetyDashboard` (`Beranda` tab) is the one screen judges will likely
   spend the most time on during Q&A since it's the only "dashboard" in the
   product — worth polishing more than the others if time is tight

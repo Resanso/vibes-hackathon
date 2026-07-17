@@ -18,7 +18,7 @@ export const headlessNotificationListener = async ({ notification }: any) => {
       
       // Jangan proses notifikasi dari aplikasi Nera sendiri agar tidak terjadi loop
       if (parsed.app !== 'com.nera.app') {
-        await threatDetector.analyzeNotification(title, text);
+        await threatDetector.analyzeNotification(title, text, parsed.app || 'unknown');
       }
     } catch (e) {
       console.error('[NotificationService] Error parsing notification:', e);

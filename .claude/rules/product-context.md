@@ -86,6 +86,54 @@ the blocking *mechanism* itself, exposed for now as a manual debug toggle in
   for the fixed pinjol list only. Not screen content reading, not input
   interception, not device-admin/MDM enrollment.
 
+### Known gap (not a blessed exception): notification-listener threat detection
+
+Added by a teammate 2026-07-17 (`mobile-app/src/services/NotificationService.ts` +
+`ThreatDetector.ts` + `plugins/withNotificationService.js` +
+`assets/threat_detection.onnx`), landed on `main` without going through the
+exception process the two entries above did. Documented here for
+transparency, not endorsed as compliant — team decision (2026-07-17) was to
+keep it as shipped rather than fix it before demo.
+
+- Mechanism: registers an Android `NotificationListenerService`
+  (`BIND_NOTIFICATION_LISTENER_SERVICE`), which receives title+text of
+  **every notification from every app on the device** — not scoped to the
+  pinjol app list used by the two exceptions above. Runs each one through an
+  on-device ONNX classifier; shows an Alert if flagged "Threat."
+- **Mitigating fact, verified in the code (2026-07-17)**: `ThreatDetector.ts`
+  never persists the raw title/text anywhere — it's held in memory only
+  for the duration of one `analyzeNotification()` call, run through the
+  on-device ONNX model, and discarded; nothing is written to a database or
+  sent to any remote server (the model call is local, unlike `explainRisk`/
+  `coachChat` in `backend`, which do call an external AI API). The one
+  `console.log` that exists logs the output label only, not the raw text.
+  **Updated same day**: a `SafetyDashboard` tracking card was added on top
+  of this (`src/utils/threatDetectionLog.ts`), so a positive detection now
+  persists locally — but deliberately only a timestamp + source app package
+  name (e.g. `com.finaccel.android`), never the notification's title/text.
+  That distinction was kept intentional specifically so this addition
+  wouldn't quietly widen the feature into storing message content.
+- **Still does not meet this doc's bar for an exception, and retention
+  isn't the reason**: the consent requirement here is about the *act of
+  reading* every app's notification content, not about how long it's kept.
+  `App.tsx` requests the OS permission silently on boot
+  (`checkAndRequestNotificationPermission()`) with no in-app disclosure UI —
+  Play Store's Notification Listener policy requires that disclosure
+  regardless of whether the data is later persisted. Scope is also still
+  unbounded (every app, not the fixed pinjol list the other two exceptions
+  use) — a debt-collector threat could arrive via SMS or WhatsApp, but so
+  could a bank OTP or a private message, and this reads all of them
+  identically before discarding them.
+- Android only, same as the other two — no iOS equivalent.
+- Flagged risk, not resolved: if this ships to Play Store or gets scrutinized
+  in a Track 2 (Safety) hackathon review, "app reads all your notifications
+  with no consent screen" is a real problem for a *financial safety* product
+  specifically, not just a generic privacy nitpick. If this needs to become
+  legitimately defensible later, the fix is the same pattern as the two
+  exceptions above (explicit consent screen naming exactly what's read, and
+  scoping to the known pinjol app list instead of every app) — not wording
+  or framing.
+
 ## Scope note
 
 There is no separate web dashboard / institutional portal — dropped from scope.

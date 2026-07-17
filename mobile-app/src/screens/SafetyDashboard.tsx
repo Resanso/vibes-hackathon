@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Image, Platform, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AlertTriangle, Bell, Calendar1, CircleCheck, Smartphone, Sparkles } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { AlertTriangle, Bell, Calendar1, CircleCheck, Siren, Smartphone, Sparkles } from "lucide-react-native";
 
 import {
   ApiError,
@@ -32,6 +33,7 @@ import {
   openUsageAccessSettings,
   type PinjolUsageEntry,
 } from "../../modules/pinjol-usage-stats";
+import { getThreatDetectionLog, type ThreatDetectionEvent } from "../utils/threatDetectionLog";
 
 const COLOR_BY_LABEL: Record<RiskLabel, string> = {
   aman: colors.success,
@@ -220,6 +222,70 @@ function PinjolUsageCard({
   );
 }
 
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("id-ID", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Tracking UI for a teammate's on-device notification-listener threat
+// detector (src/services/ThreatDetector.ts + NotificationService.ts) — see
+// root .claude/rules/product-context.md's "Known gap" entry: that feature
+// itself isn't consent-gated or scoped to the pinjol app list the way
+// PinjolUsageCard/pinjol-blocker are. This card only reads what
+// threatDetectionLog.ts stores, which is deliberately just timestamp +
+// source app package — never the notification's title/text.
+function ThreatDetectionCard({ events }: { events: ThreatDetectionEvent[] }) {
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recentCount = events.filter((e) => new Date(e.detectedAt).getTime() >= sevenDaysAgo).length;
+
+  return (
+    <View
+      className="rounded-2xl border px-4 py-4"
+      style={{ borderColor: "#CBD5E1", gap: 12 }}
+      testID="sd-threat-detection-card"
+    >
+      <View className="flex-row items-center" style={{ gap: 8 }}>
+        <Siren color={colors.error} size={18} />
+        <Text className="font-heading text-sm text-neutral">
+          Deteksi Ancaman Notifikasi (Debug)
+        </Text>
+      </View>
+      <Text className="font-body text-sm text-neutral" style={{ opacity: 0.6 }}>
+        {recentCount} notifikasi mencurigakan terdeteksi 7 hari terakhir. Isi
+        notifikasi tidak pernah disimpan — cuma waktu dan sumber aplikasinya.
+      </Text>
+      {events.length === 0 ? (
+        <Text className="font-body text-sm text-neutral" style={{ opacity: 0.5 }}>
+          Belum ada deteksi.
+        </Text>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {events.slice(0, 5).map((event) => {
+            const app = PINJOL_APPS.find((a) => a.packageName === event.sourceApp);
+            return (
+              <View
+                key={event.id}
+                className="flex-row items-center justify-between"
+              >
+                <Text className="font-body text-sm text-neutral">
+                  {app?.label ?? event.sourceApp}
+                </Text>
+                <Text className="font-body text-xs text-neutral" style={{ opacity: 0.5 }}>
+                  {formatDateTime(event.detectedAt)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
 function EntryRow({ entry }: { entry: TrendEntry }) {
   return (
     <View
@@ -306,6 +372,23 @@ export function SafetyDashboard() {
     setPinjolConsentState("declined");
   };
 
+  const [threatEvents, setThreatEvents] = useState<ThreatDetectionEvent[]>([]);
+
+  const loadThreatEvents = useCallback(async () => {
+    if (!isAndroid) return;
+    setThreatEvents(await getThreatDetectionLog());
+  }, [isAndroid]);
+
+  // useFocusEffect, not useEffect — detections can happen via the headless
+  // background listener while this tab stays mounted (MainTabNavigator
+  // doesn't unmount tabs on switch), so a mount-only load would miss
+  // anything that arrived while the user was elsewhere in the app.
+  useFocusEffect(
+    useCallback(() => {
+      loadThreatEvents();
+    }, [loadThreatEvents]),
+  );
+
   // Shared by the initial mount fetch and pull-to-refresh — both trend and
   // tracking data can change independently (a new risk.assess, a check-in
   // from WhatsApp/Telegram), so refresh reloads both, not just one.
@@ -335,7 +418,7 @@ export function SafetyDashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadData(), loadPinjolUsage()]);
+    await Promise.all([loadData(), loadPinjolUsage(), loadThreatEvents()]);
     setRefreshing(false);
   };
 
@@ -407,6 +490,8 @@ export function SafetyDashboard() {
             onOpenUsageAccessSettings={openUsageAccessSettings}
           />
         ) : null}
+
+        {isAndroid ? <ThreatDetectionCard events={threatEvents} /> : null}
 
         {tracking ? (
           <View

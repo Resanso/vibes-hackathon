@@ -1,6 +1,7 @@
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
 import { Asset } from 'expo-asset';
 import { Alert } from 'react-native';
+import { recordThreatDetection } from '../utils/threatDetectionLog';
 
 class ThreatDetector {
   private session: InferenceSession | null = null;
@@ -23,7 +24,10 @@ class ThreatDetector {
     }
   }
 
-  async analyzeNotification(title: string, text: string): Promise<boolean> {
+  // `sourceApp` (package name) is the only thing recorded on a positive
+  // detection — see threatDetectionLog.ts's header comment for why title/
+  // text never gets persisted, even for the SafetyDashboard history view.
+  async analyzeNotification(title: string, text: string, sourceApp: string): Promise<boolean> {
     if (!this.session) {
       await this.init();
     }
@@ -48,6 +52,7 @@ class ThreatDetector {
       const isThreat = label === 'Threat';
       
       if (isThreat) {
+        await recordThreatDetection(sourceApp);
         Alert.alert(
           "🚨 Ancaman Finansial Terdeteksi",
           "Sistem AI kami mendeteksi pola komunikasi pinjaman online yang agresif dari notifikasi Anda. Harap berhati-hati dan gunakan alternatif pinjaman kampus."
