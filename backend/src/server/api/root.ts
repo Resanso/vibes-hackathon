@@ -1,4 +1,5 @@
 import { authRouter } from "~/server/api/routers/auth";
+import { chatRouter } from "~/server/api/routers/chat";
 import { dashboardRouter } from "~/server/api/routers/dashboard";
 import { profileRouter } from "~/server/api/routers/profile";
 import { recommendationsRouter } from "~/server/api/routers/recommendations";
@@ -15,6 +16,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   auth: authRouter,
+  chat: chatRouter,
   profile: profileRouter,
   simulation: simulationRouter,
   risk: riskRouter,

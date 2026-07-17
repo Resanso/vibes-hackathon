@@ -118,16 +118,19 @@ failed archive still leaves a queryable trail of what was detected.
 
 ## Responsibilities
 
-- **Quick consult** (`src/handlers/quickConsult.ts`): a WhatsApp user sends a
-  fixed-format command, `/cek <nominal> <bunga%/tahun> <biaya> <tenor bulan>`
-  (e.g. `/cek 3000000 24 50000 6`). The handler calls `backend`'s
-  `simulation.calculate` + `risk.assess` using the sender's phone number
-  (from the JID) and replies with the risk label + MAIA explanation. This is
-  **command-based, not free-text NLP** — no AI is used to parse the inbound
-  message; MAIA is only used inside `backend` to narrate the score. Requires
-  a `Profile` to already exist (created via `mobile-app`) — `risk.assess`
-  throws `NOT_FOUND` otherwise, and the handler turns that into a
-  plain-language reply telling the student to set up their profile first.
+- **AI Coach chat** (`src/handlers/chatHandler.ts`, added 2026-07-17,
+  replaces the old `/cek`-command-based `quickConsult.ts`): every inbound
+  message (whatever the student types, no fixed format) is forwarded as-is
+  to `backend`'s `chat.message` using the sender's phone number (from the
+  JID), and the reply is sent back verbatim. All natural-language
+  understanding and tool-calling (loan risk assessment, check-in, tracking
+  status, campus alternatives) happens inside `backend` — see its
+  `CLAUDE.md`'s "AI Coach" section and `src/server/ai/coachChat.ts`. This
+  service holds no AI/NLP logic of its own, same rule as before, just a
+  different backend endpoint being called. Requires a `Profile` to already
+  exist (created via `mobile-app`) — `chat.message` throws `NOT_FOUND`
+  otherwise, and the handler turns that into a plain-language reply telling
+  the student to set up their profile first.
 - **Reminders** (`src/reminders/scheduler.ts`): a `node-cron` job (daily,
   `REMINDER_CRON` env) calls `backend`'s `reminders.dueSoon` and sends one WA
   message per result. Due dates are derived from `RiskEntry.firstDueDate` +
@@ -140,10 +143,12 @@ failed archive still leaves a queryable trail of what was detected.
   message to every phone with an active `LoanTracking` that hasn't
   confirmed "sudah menyisihkan uang" today — one evening message, not a
   separate morning-reminder/evening-escalation pair (scope cut, given this
-  service's overall priority). The student replies `/sudah`
-  (`src/handlers/quickConsult.ts`'s `handleCheckInCommand`), which calls
-  `tracking.checkIn` with `source: "whatsapp"` and replies with the updated
-  remaining tunggakan. `mobile-app`'s `SafetyDashboard` (`Beranda` tab) is
+  service's overall priority). The student can just reply naturally (e.g.
+  "udah kok, tadi pagi") — `chatHandler.ts` forwards it to `chat.message`,
+  and the model calls its `checkIn` tool (`source: "app"` internally, since
+  the tool itself doesn't distinguish the calling channel — the *fact* of
+  checking in is what's recorded, see `backend/src/server/ai/coachChat.ts`).
+  `mobile-app`'s `SafetyDashboard` (`Beranda` tab) is
   the other place the same check-in can happen (`source: "app"`) — the
   `(loanTrackingId, date)` unique constraint on `backend`'s `DailyCheckIn`
   model means whichever confirms first each day is the one that counts, no
