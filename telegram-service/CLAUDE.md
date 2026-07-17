@@ -39,32 +39,41 @@ all — every command has to resolve it first via a linking step:
 2. Student taps it, Telegram sends their contact (with phone number) back to
    the bot — `handleContactShared` normalizes it (strips non-digits) and
    calls `backend`'s `profile.linkTelegram({ phone, telegramChatId })`.
-3. Every subsequent command (`/cek`, `/sudah`) calls
-   `backend.getProfileByChatId(chatId)` first (see
-   `handlers/quickConsult.ts`'s `resolvePhone`) to recover `phone` before
-   doing anything else. No phone on file yet → the student is told to
+3. Every subsequent message calls `backend.getProfileByChatId(chatId)` first
+   (see `handlers/chatHandler.ts`) to recover `phone` before forwarding
+   anything to the AI Coach. No phone on file yet → the student is told to
    `/start` again.
 
-**Known gap, not new**: `mobile-app`'s `Onboarding` screen doesn't normalize
-what a student types into the phone field (see its own file) — the same gap
-`whatsapp-service`'s JID-based matching already lives with. If a student
-typed `0812...` in the app but Telegram reports `62812...` (or vice versa),
-linking will look like it succeeded but the phones won't match. Not
-introduced here, just inherited.
+**Fixed the hard way, 2026-07-17**: a real profile registered with a leading
+`0` (e.g. `081234567890`) couldn't link Telegram — Telegram's
+`contact.phone_number` always reports the international digits-only format
+(`6281234567890`), so the two never matched even though they were "the same
+number" to a human. `backend`'s `auth.register` now normalizes every phone
+to that same international format at registration time (see its
+`normalizePhone()`), so this shouldn't recur for new registrations — but any
+profile created before that fix needs a manual migration (rename the
+`Profile.phone` + cascade `RiskEntry`/`LoanTracking`, done once already on
+the VPS for one account; there is no bulk-migration script for the rest).
 
 ## Responsibilities (mirrors whatsapp-service exactly, per-channel)
 
-- **Quick consult** (`src/handlers/quickConsult.ts`): `/cek <nominal>
-  <bunga%/tahun> <biaya> <tenor bulan>` → `backend`'s `risk.assess`, same
-  reply shape as `whatsapp-service`.
+- **AI Coach chat** (`src/handlers/chatHandler.ts`, added 2026-07-17,
+  replaces the old `/cek`/`/sudah`-command-based `quickConsult.ts`): every
+  inbound message (no fixed format) is forwarded as-is to `backend`'s
+  `chat.message` once `getProfileByChatId` resolves a phone. All
+  natural-language understanding and tool-calling (loan risk, check-in,
+  tracking, campus alternatives) lives in `backend` — see its `CLAUDE.md`'s
+  "AI Coach" section. `/start` is the only command left; everything else is
+  free text.
 - **Reminders** (`src/reminders/scheduler.ts`): daily cron calls `backend`'s
   `reminders.dueSoon({ channel: "telegram" })` — the `channel` filter is
   what keeps this from double-sending the same reminder `whatsapp-service`
   already sent to a WhatsApp-channel student.
-- **Loan payoff check-ins** (`src/reminders/checkInScheduler.ts` +
-  `/sudah` in `quickConsult.ts`): identical to `whatsapp-service`'s "State
-  2" tracking, using `tracking.pendingToday({ channel: "telegram" })` and
-  `tracking.checkIn({ source: "telegram" })`.
+- **Loan payoff check-ins** (`src/reminders/checkInScheduler.ts`): identical
+  to `whatsapp-service`'s "State 2" tracking, using
+  `tracking.pendingToday({ channel: "telegram" })` for the evening nudge —
+  the student's actual "sudah menyisihkan" confirmation now goes through
+  the AI Coach's `checkIn` tool (free text) rather than a `/sudah` command.
 - **Manual trigger** (`src/internal/triggerServer.ts`): same localhost-only
   HTTP endpoint pattern as `whatsapp-service`, default port `4002` (vs.
   `4001`) so both can run on the same VPS. `backend`'s `reminders.triggerNow`

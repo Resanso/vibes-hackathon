@@ -60,7 +60,9 @@ Run with `npm run <script>`:
 - `src/server/api/trpc.ts` — tRPC setup: context, base procedures (`publicProcedure`), middleware. Add new procedure types (e.g. `protectedProcedure`) here.
 - `src/server/db.ts` — Prisma client singleton.
 - `src/server/logic/riskScore.ts` — `calculateRiskScore()`, deterministic and pure — NEVER let the AI produce the score.
-- `src/server/ai/explainRisk.ts` — `explainRisk()`, the one MAIA Router call that turns a score + reasons into a plain-language explanation.
+- `src/server/ai/explainRisk.ts` — `explainRisk()`, the MAIA Router call that turns a score + reasons into a plain-language explanation (used inside `assessRiskForPhone`).
+- `src/server/ai/coachChat.ts` — `chatWithCoach()`, the AI Coach: multi-turn free-text chat (see "AI Coach" below).
+- `src/server/services/assessRisk.ts` — `assessRiskForPhone()`, shared by `risk.assess` and the AI Coach's `assessLoanRisk` tool so a loan simulation always creates the same `RiskEntry` regardless of which surface triggered it.
 - `prisma/schema.prisma` — Prisma schema (source of truth for DB models).
 - `generated/prisma/` — generated Prisma client output. **Do not hand-edit**; regenerated via `postinstall`/`prisma generate`.
 - `src/env.js` — typed, validated environment variables (server vars under `server`, public vars under `client`, must be listed in `runtimeEnv`).
@@ -101,6 +103,43 @@ in the codebase gets it stripped automatically. `auth.login` is the one
 place that overrides this per-query (`omit: { passwordHash: false }`) to
 actually read it for the bcrypt compare.
 
+## AI Coach (multi-turn free-text chat, replaces the old /cek command)
+
+Added 2026-07-17: `whatsapp-service`/`telegram-service` no longer parse a
+fixed `/cek <nominal> <bunga> <biaya> <tenor>` command — every message a
+student sends is forwarded as-is to `chat.message`
+(`src/server/api/routers/chat.ts`), which calls `chatWithCoach()`
+(`src/server/ai/coachChat.ts`).
+
+- Uses the Vercel AI SDK (`ai` + `@ai-sdk/openai`, the latter pointed at
+  MAIA Router's OpenAI-compatible base URL) with **tool-calling**:
+  `assessLoanRisk` (wraps `assessRiskForPhone` — the model extracts
+  principal/interest/fee/tenor from a natural-language sentence instead of a
+  rigid command format), `checkIn` and `getTrackingStatus` (wrap
+  `tracking.checkIn`/`tracking.status` via the server-side caller —
+  `createCaller` from `root.ts`, same pattern as its own JSDoc example),
+  and `listRecommendations` (wraps `recommendations.list`).
+- **Multi-turn**: every user/assistant message is persisted to the new
+  `ChatMessage` model (`phone`, `role`, `content`), and the last 20 are
+  replayed as conversation history on each call — a follow-up question like
+  "kalau tenornya setahun gimana?" has context from the previous turn.
+- **Model never invents a risk score** — the system prompt explicitly
+  requires calling `assessLoanRisk` for any loan-risk question; scoring
+  stays deterministic (`calculateRiskScore`) exactly as before, only the
+  *conversational* layer around it is AI-driven now.
+- Falls back to a canned "coba lagi sebentar lagi" reply if
+  `MAIA_API_KEY`/`MAIA_BASE_URL` aren't set or the call fails — same
+  fail-open philosophy as `explainRisk()`. **As of this writing, MAIA
+  Router is unreachable from the VPS** (`router.maia.id` — "no route to
+  host", likely an IP-allowlist issue on MAIA's side) — the chat feature is
+  code-complete and typechecked but has not been verified against a live
+  MAIA response. Confirm connectivity before treating this as demo-ready.
+- **Note the circular import**: `chat.ts` → `coachChat.ts` → `root.ts`
+  (for `createCaller`) → `chat.ts`. Safe in practice because `createCaller`
+  is only ever invoked lazily inside an async function body, never at
+  module-evaluation time — confirmed via a full `next build`, not just
+  `tsc`. Don't restructure this without re-verifying with a real build.
+
 ## Core API responsibilities (map to the 7-step flow)
 
 tRPC routers under `src/server/api/routers/`:
@@ -109,14 +148,16 @@ tRPC routers under `src/server/api/routers/`:
 1. `profile` — self-reported financial profile (step 2)
 2. `simulation` — true cost-of-credit calculator (nominal + interest + service
    fee + tenor → total repayment + late-payment projection). Pure math, no AI.
-3. `risk` — `calculateRiskScore()` (deterministic, pure, unit-testable) + `explainRisk()`
+3. `risk` — `calculateRiskScore()` (deterministic, pure, unit-testable) + `explainRisk()`, both
+   via `assessRiskForPhone` (`src/server/services/assessRisk.ts`)
 4. `recommendations` — campus alternatives, hardcoded seed list
-5. `dashboard` — trend of a user's self-reported entries over time, consumed by
+5. `chat` — `chat.message`, the AI Coach — see "AI Coach" above
+6. `dashboard` — trend of a user's self-reported entries over time, consumed by
    `mobile-app`'s step 6 screen
-6. `reminders` — `dueSoon` query, used by `whatsapp-service`'s daily cron to find
+7. `reminders` — `dueSoon` query, used by `whatsapp-service`'s daily cron to find
    upcoming installment due dates (derived from `RiskEntry.firstDueDate`, not a
    stored payment schedule)
-7. `tracking` — "State 2": daily payoff-progress tracking for a loan the
+8. `tracking` — "State 2": daily payoff-progress tracking for a loan the
    student explicitly marked as actually taken (`start`, keyed by
    `RiskEntry.id`), not every `risk.assess` call (many are just
    simulations). `checkIn` records "sudah menyisihkan uang" for today

@@ -24,15 +24,6 @@ export interface Profile {
   telegramChatId: string | null;
 }
 
-export interface RiskAssessResult {
-  riskScore: number;
-  riskLabel: "aman" | "waspada" | "bahaya";
-  reasons: string[];
-  explanation: string | null;
-  monthlyInstallment: number;
-  totalRepayment: number;
-}
-
 export interface DueReminder {
   phone: string;
   riskEntryId: string;
@@ -46,27 +37,7 @@ export interface PendingCheckIn {
   dailyTargetAmount: number;
 }
 
-export interface TrackingStatus {
-  riskEntryId: string;
-  principal: number;
-  totalRepayment: number;
-  startedAt: string;
-  dailyTargetAmount: number;
-  daysConfirmed: number;
-  amountSaved: number;
-  remainingAmount: number;
-  confirmedToday: boolean;
-}
-
 export const backend = {
-  assessRisk: (input: {
-    phone: string;
-    principal: number;
-    interestRatePct: number;
-    serviceFee: number;
-    tenorMonths: number;
-  }) => client.mutation("risk.assess", input) as Promise<RiskAssessResult>,
-
   // channel: "telegram" — filters to students whose notificationChannel is
   // Telegram, so whatsapp-service's own dueSoon call (channel: "whatsapp")
   // never double-sends the same reminder.
@@ -80,18 +51,12 @@ export const backend = {
       PendingCheckIn[]
     >,
 
-  checkIn: (input: { phone: string; source: "app" | "whatsapp" | "telegram" }) =>
-    client.mutation("tracking.checkIn", input) as Promise<unknown>,
-
-  trackingStatus: (phone: string) =>
-    client.query("tracking.status", { phone }) as Promise<TrackingStatus | null>,
-
   // Binds this Telegram chat to a phone's Profile — see
   // src/handlers/linking.ts's contact-share flow.
   linkTelegram: (input: { phone: string; telegramChatId: string }) =>
     client.mutation("profile.linkTelegram", input) as Promise<unknown>,
 
-  // Reverse lookup — every command handler needs this first, since a
+  // Reverse lookup — every message handler needs this first, since a
   // chatId alone carries no phone information (unlike a WhatsApp JID).
   getProfileByChatId: (telegramChatId: string) =>
     client.query("profile.getByTelegramChatId", { telegramChatId }) as Promise<Profile | null>,
@@ -101,4 +66,10 @@ export const backend = {
   // send anything.
   getProfile: (phone: string) =>
     client.query("profile.get", { phone }) as Promise<Profile | null>,
+
+  // Free-text AI Coach — see backend/src/server/ai/coachChat.ts. Replaces
+  // this service's old direct risk.assess/tracking.checkIn calls, which
+  // backend's chat.message now performs internally via tool-calling.
+  chatMessage: (input: { phone: string; message: string }) =>
+    client.mutation("chat.message", input) as Promise<{ reply: string }>,
 };

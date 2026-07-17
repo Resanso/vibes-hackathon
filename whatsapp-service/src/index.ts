@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { PrismaClient } from "../generated/prisma/index.js";
 import { BOT_SESSION_ID, logger, startSession } from "./connection.js";
-import { handleIncomingMessage } from "./handlers/quickConsult.js";
+import { handleIncomingMessage } from "./handlers/chatHandler.js";
 import { startTriggerServer } from "./internal/triggerServer.js";
 import { linkPersonalNumber } from "./personal/linkPersonalNumber.js";
 import { listActiveLinkedNumbers } from "./personal/linkedNumbers.js";

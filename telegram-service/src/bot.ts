@@ -1,8 +1,8 @@
 import { Bot } from "grammy";
 
 import { env } from "./env.js";
+import { handleChatMessage } from "./handlers/chatHandler.js";
 import { handleContactShared, handleStartCommand } from "./handlers/linking.js";
-import { handleCekCommand, handleSudahCommand, handleUsage } from "./handlers/quickConsult.js";
 import { logger } from "./logger.js";
 
 export function createBot(): Bot {
@@ -10,12 +10,12 @@ export function createBot(): Bot {
 
   bot.command("start", handleStartCommand);
   bot.on("message:contact", handleContactShared);
-  bot.command("cek", handleCekCommand);
-  bot.command("sudah", handleSudahCommand);
 
-  // Fallback for any other text — same role as whatsapp-service's USAGE
-  // reply for unrecognized messages.
-  bot.on("message:text", handleUsage);
+  // Everything else is free-text AI Coach — see chatHandler.ts. The old
+  // /cek and /sudah fixed-command format is gone; the model figures out
+  // intent (loan risk assessment, check-in, tracking status, alternatives)
+  // via tool-calling on backend's side.
+  bot.on("message:text", handleChatMessage);
 
   bot.catch((err) => {
     logger.error({ error: err.error, chatId: err.ctx.chat?.id }, "Unhandled bot error");

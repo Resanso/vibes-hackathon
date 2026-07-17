@@ -58,7 +58,8 @@ model Profile {
     // profile.setChannel).
     telegramChatId      String? @unique
 
-    riskEntries RiskEntry[]
+    riskEntries  RiskEntry[]
+    chatMessages ChatMessage[]
 }
 
 model RiskEntry {
@@ -127,4 +128,21 @@ model DailyCheckIn {
     createdAt DateTime @default(now())
 
     @@unique([loanTrackingId, date])
+}
+
+// Multi-turn AI Coach conversation history — free-text chat on
+// whatsapp-service/telegram-service (replacing the old fixed /cek command
+// format) feeds this back to src/server/ai/coachChat.ts on every turn so
+// the model has context for follow-up questions. Every row is one message;
+// `role` is "user" | "assistant" (no "system" rows stored — the system
+// prompt is injected fresh each call, not persisted).
+model ChatMessage {
+    id        String   @id @default(cuid())
+    phone     String
+    profile   Profile  @relation(fields: [phone], references: [phone])
+    role      String
+    content   String
+    createdAt DateTime @default(now())
+
+    @@index([phone, createdAt])
 }
