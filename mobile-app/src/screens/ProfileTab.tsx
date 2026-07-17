@@ -10,6 +10,7 @@ import {
   ApiError,
   debugResetCheckIn,
   getProfile,
+  refreshScholarships,
   setNotificationChannel,
   triggerReminders,
   type NotificationChannel,
@@ -196,6 +197,36 @@ export function ProfileTab({ navigation }: Props) {
       });
     } finally {
       setTriggering(false);
+    }
+  }
+
+  const [refreshingScholarships, setRefreshingScholarships] = useState(false);
+  const [refreshScholarshipsResult, setRefreshScholarshipsResult] = useState<
+    { variant: "success" | "error"; message: string } | null
+  >(null);
+
+  // No scraping cron exists yet — this is how the "Alternatif" tab's
+  // scholarship list actually gets populated/refreshed for now, same
+  // manual-trigger pattern as handleTriggerReminders above.
+  async function handleRefreshScholarships() {
+    setRefreshingScholarships(true);
+    setRefreshScholarshipsResult(null);
+    try {
+      const { upserted, errors } = await refreshScholarships();
+      setRefreshScholarshipsResult({
+        variant: errors.length > 0 && upserted === 0 ? "error" : "success",
+        message:
+          errors.length > 0
+            ? `${upserted} beasiswa tersimpan, sebagian sumber gagal: ${errors.join("; ")}`
+            : `${upserted} beasiswa tersimpan/diperbarui.`,
+      });
+    } catch {
+      setRefreshScholarshipsResult({
+        variant: "error",
+        message: "Gagal refresh data beasiswa. Coba lagi sebentar lagi.",
+      });
+    } finally {
+      setRefreshingScholarships(false);
     }
   }
 
@@ -426,6 +457,27 @@ export function ProfileTab({ navigation }: Props) {
               message={triggerResult.message}
               variant={triggerResult.variant === "success" ? "success" : "error"}
               onDismiss={() => setTriggerResult(null)}
+            />
+          ) : null}
+
+          <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
+
+          <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
+            Ambil data beasiswa terbaru dari sumber resmi untuk ditampilkan di tab
+            Alternatif. Belum otomatis terjadwal — jalankan manual kalau daftarnya
+            kosong atau ingin update.
+          </Text>
+          <SecondaryButton
+            label={refreshingScholarships ? "Mengambil data..." : "Refresh Data Beasiswa (debug)"}
+            onPress={handleRefreshScholarships}
+            disabled={refreshingScholarships}
+            testID="refresh-scholarships-button"
+          />
+          {refreshScholarshipsResult ? (
+            <StatusToast
+              message={refreshScholarshipsResult.message}
+              variant={refreshScholarshipsResult.variant === "success" ? "success" : "error"}
+              onDismiss={() => setRefreshScholarshipsResult(null)}
             />
           ) : null}
 
