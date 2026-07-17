@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { CreditCard, Lock, PieChart, ShieldCheck, Users, Wallet } from "lucide-react-native";
 
@@ -95,8 +96,8 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
-        className="flex-1 px-6 py-6"
-        contentContainerStyle={{ gap: 24 }}
+        className="flex-1 px-6 pt-6"
+        contentContainerStyle={{ gap: 24, paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
       >
         <BackButton testID="fsc-back-button" onPress={() => navigation.goBack()} />

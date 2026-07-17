@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import {
   Keyboard,
-  SafeAreaView,
   ScrollView,
   Text,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Calendar1, Eye, FileText, Percent, Wallet } from "lucide-react-native";
 
@@ -140,8 +140,8 @@ export function BorrowingScenario({ navigation, route }: Props) {
     <SafeAreaView className="flex-1 bg-white">
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView
-          className="flex-1 px-6 py-6"
-          contentContainerStyle={{ gap: 24 }}
+          className="flex-1 px-6 pt-6"
+          contentContainerStyle={{ gap: 24, paddingBottom: 100 }}
           keyboardShouldPersistTaps="handled"
         >
           <BackButton testID="bs-back-button" onPress={() => navigation.goBack()} />
