@@ -32,6 +32,29 @@ submitted — never inferred from device signals (installed apps, contacts, SMS,
 location, etc.). If a feature would require reading device signals to work, it's
 out of scope, not a workaround to design around.
 
+### Exception: consent-based pinjol usage tracking (Android only, debug/testing)
+
+One narrow, explicit exception, added 2026-07-17 for an in-progress experiment:
+detecting how often and how long a student opens known pinjol (online loan) apps,
+surfaced on the Financial Safety Dashboard (step 6).
+
+- Requires an explicit in-app consent screen before any device signal is read —
+  no silent collection. The consent copy must name exactly what's read (app open
+  count + foreground duration for a defined pinjol app list) and let the student
+  decline without blocking the rest of the app.
+- Android only, via `UsageStatsManager` (user must manually grant Usage Access in
+  system Settings — this can't be requested as a normal runtime permission).
+  iOS has no equivalent public API for reading other apps' usage, so this feature
+  cannot exist on iOS; do not attempt an iOS workaround.
+- Scope stays narrow: open count + time-in-app for a specific pinjol app list.
+  Not general installed-app enumeration, not SMS, not contacts, not location.
+- Currently debug/testing only, gated behind development builds while validated
+  on a real Android device — not yet a claimed feature for the hackathon
+  submission or demo. Revisit before demo day whether this ships or gets pulled.
+
+Everything else in this principle (SMS, contacts, location, general installed-app
+lists) remains out of scope, full stop — this exception does not generalize.
+
 ## Scope note
 
 There is no separate web dashboard / institutional portal — dropped from scope.

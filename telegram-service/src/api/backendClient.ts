@@ -68,8 +68,15 @@ export const backend = {
     client.query("profile.get", { phone }) as Promise<Profile | null>,
 
   // Free-text AI Coach — see backend/src/server/ai/coachChat.ts. Replaces
-  // this service's old direct risk.assess/tracking.checkIn calls, which
-  // backend's chat.message now performs internally via tool-calling.
+  // this service's old direct risk.assess calls, which backend's
+  // chat.message now performs internally via tool-calling.
   chatMessage: (input: { phone: string; message: string }) =>
     client.mutation("chat.message", input) as Promise<{ reply: string }>,
+
+  // Direct check-in, bypassing the AI Coach — used by the check-in
+  // reminder's inline "Sudah" button (src/reminders/checkInButtons.ts),
+  // where a deterministic instant action is more appropriate than routing
+  // a button tap through free-text tool-calling.
+  checkIn: (phone: string) =>
+    client.mutation("tracking.checkIn", { phone, source: "telegram" }) as Promise<unknown>,
 };

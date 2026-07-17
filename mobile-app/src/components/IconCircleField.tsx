@@ -52,7 +52,9 @@ export function IconCircleField({
         >
           <Icon color={iconColor} size={18} />
         </View>
-        <Text className="font-heading text-sm text-neutral">{label}</Text>
+        <Text className="font-heading text-sm text-neutral" style={{ flex: 1 }}>
+          {label}
+        </Text>
       </View>
 
       <View

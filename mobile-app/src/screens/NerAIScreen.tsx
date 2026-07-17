@@ -11,10 +11,37 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Send } from "lucide-react-native";
+import Markdown from "react-native-markdown-display";
 
 import { ApiError, getChatHistory, sendChatMessage, type ChatMessage } from "../api/client";
 import { useSessionStore } from "../store/sessionStore";
 import { colors } from "../theme/colors";
+import { typography } from "../theme/typography";
+
+// Assistant replies come from the AI Coach as markdown (lists, bold, etc.) —
+// styled to match the bubble's text color, since react-native-markdown-display
+// renders each block as its own RN Text/View rather than one inline node.
+const markdownStyles = {
+  body: { ...typography.body, fontSize: 14, color: colors.neutral },
+  strong: { fontFamily: "Poppins_600SemiBold" as const },
+  bullet_list: { marginVertical: 2 },
+  ordered_list: { marginVertical: 2 },
+  list_item: { marginVertical: 2, flexDirection: "row" as const },
+  paragraph: { marginTop: 0, marginBottom: 8 },
+  code_inline: {
+    backgroundColor: `${colors.neutral}1A`,
+    fontFamily: "Poppins_400Regular" as const,
+    paddingHorizontal: 4,
+    borderRadius: 4,
+  },
+  code_block: {
+    backgroundColor: `${colors.neutral}1A`,
+    fontFamily: "Poppins_400Regular" as const,
+    borderRadius: 8,
+    padding: 8,
+  },
+  link: { color: colors.secondary },
+};
 
 export function NerAIScreen() {
   const phone = useSessionStore((state) => state.phone);
@@ -72,7 +99,7 @@ export function NerAIScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -117,12 +144,13 @@ export function NerAIScreen() {
                     borderBottomLeftRadius: !isUser ? 4 : 16,
                   }}
                 >
-                  <Text
-                    className="font-body text-sm"
-                    style={{ color: isUser ? "white" : colors.neutral }}
-                  >
-                    {msg.content}
-                  </Text>
+                  {isUser ? (
+                    <Text className="font-body text-sm" style={{ color: "white" }}>
+                      {msg.content}
+                    </Text>
+                  ) : (
+                    <Markdown style={markdownStyles}>{msg.content}</Markdown>
+                  )}
                 </View>
               );
             })
@@ -140,7 +168,7 @@ export function NerAIScreen() {
           )}
         </ScrollView>
 
-        <View className="border-t border-slate-200 px-4 py-3 pb-6 flex-row items-center bg-white">
+        <View className="border-t border-slate-200 px-4 py-3 flex-row items-center bg-white">
           <TextInput
             className="flex-1 rounded-full border border-slate-300 px-4 py-2 font-body text-neutral mr-2"
             style={{ minHeight: 44, maxHeight: 100 }}

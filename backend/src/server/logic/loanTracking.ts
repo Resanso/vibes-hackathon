@@ -10,6 +10,19 @@ export function computeDailyTarget(monthlyInstallment: number, referenceDate = n
   return Math.ceil(monthlyInstallment / daysInMonth(referenceDate));
 }
 
+// Disposable income (income minus daily-living expenses, floored at 0)
+// spread across the CURRENT calendar month — recomputed every call (unlike
+// dailyTargetAmount), since it's informational context ("can you actually
+// afford this daily target"), not a number the student needs to stay fixed.
+export function computeDailyDisposableIncome(
+  monthlyIncome: number,
+  monthlyExpenses: number,
+  referenceDate = new Date(),
+): number {
+  const disposableIncome = Math.max(0, monthlyIncome - monthlyExpenses);
+  return Math.floor(disposableIncome / daysInMonth(referenceDate));
+}
+
 // Normalizes any Date to UTC midnight of that calendar day — the shape
 // DailyCheckIn.date is stored in, so a WhatsApp reply and an in-app tap on
 // the same day collide on the same row instead of double-counting.
@@ -21,6 +34,8 @@ export interface LoanTrackingProgressInput {
   dailyTargetAmount: number;
   totalRepayment: number;
   checkInDates: Date[]; // one per confirmed day, any order
+  monthlyIncome: number;
+  monthlyExpenses: number;
   now?: Date;
 }
 
@@ -30,6 +45,11 @@ export interface LoanTrackingProgress {
   amountSaved: number;
   remainingAmount: number;
   confirmedToday: boolean;
+  // Informational, not enforced — see computeDailyDisposableIncome. Lets
+  // mobile-app show "this daily target is more than your daily leftover
+  // budget" instead of silently assuming the target is affordable.
+  dailyDisposableIncome: number;
+  targetExceedsDisposableIncome: boolean;
 }
 
 // Pure — no DB access, so it's unit-testable and the API layer just wires
@@ -44,6 +64,11 @@ export function computeProgress(input: LoanTrackingProgressInput): LoanTrackingP
   const confirmedToday = input.checkInDates.some(
     (date) => startOfDayUTC(date).getTime() === today,
   );
+  const dailyDisposableIncome = computeDailyDisposableIncome(
+    input.monthlyIncome,
+    input.monthlyExpenses,
+    now,
+  );
 
   return {
     dailyTargetAmount: input.dailyTargetAmount,
@@ -51,5 +76,7 @@ export function computeProgress(input: LoanTrackingProgressInput): LoanTrackingP
     amountSaved,
     remainingAmount,
     confirmedToday,
+    dailyDisposableIncome,
+    targetExceedsDisposableIncome: input.dailyTargetAmount > dailyDisposableIncome,
   };
 }

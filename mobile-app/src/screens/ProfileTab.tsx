@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, SafeAreaView, ScrollView, Text, View } from "react-native";
-import { Calendar1, CreditCard, Phone, Send, User, Users, Wallet } from "lucide-react-native";
+import { Calendar1, CreditCard, Phone, Send, User, Users, Utensils, Wallet } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import {
   ApiError,
-  debugCreateDueEntry,
+  debugResetCheckIn,
   getProfile,
   setNotificationChannel,
   triggerReminders,
@@ -79,31 +79,32 @@ export function ProfileTab({ navigation }: Props) {
   const [channelResult, setChannelResult] = useState<
     { variant: "success" | "error"; message: string } | null
   >(null);
-  const [creatingDueEntry, setCreatingDueEntry] = useState(false);
-  const [dueEntryResult, setDueEntryResult] = useState<
+  const [resettingCheckIn, setResettingCheckIn] = useState(false);
+  const [resetCheckInResult, setResetCheckInResult] = useState<
     { variant: "success" | "error"; message: string } | null
   >(null);
 
-  // Testing-only: creates a RiskEntry due tomorrow so "Kirim reminder
-  // cicilan sekarang" below has something to actually send, without
-  // widening REMINDER_WINDOW_DAYS on either messaging service.
-  async function handleCreateDueEntry() {
+  // Testing-only: flips confirmedToday back to false/null for the active
+  // loan tracking, without waiting for the next calendar day — lets the
+  // "belum menyisihkan hari ini" warning + reminder flow be re-tested
+  // repeatedly in one sitting.
+  async function handleResetCheckIn() {
     if (!phone) return;
-    setCreatingDueEntry(true);
-    setDueEntryResult(null);
+    setResettingCheckIn(true);
+    setResetCheckInResult(null);
     try {
-      await debugCreateDueEntry(phone);
-      setDueEntryResult({
+      await debugResetCheckIn(phone);
+      setResetCheckInResult({
         variant: "success",
-        message: "Cicilan dummy jatuh tempo besok berhasil dibuat.",
+        message: "Status \"sudah disisihkan hari ini\" berhasil direset.",
       });
     } catch {
-      setDueEntryResult({
+      setResetCheckInResult({
         variant: "error",
-        message: "Gagal membuat cicilan dummy. Coba lagi sebentar lagi.",
+        message: "Gagal reset status check-in. Coba lagi sebentar lagi.",
       });
     } finally {
-      setCreatingDueEntry(false);
+      setResettingCheckIn(false);
     }
   }
 
@@ -208,11 +209,15 @@ export function ProfileTab({ navigation }: Props) {
       .finally(() => setLoading(false));
   }, [phone]);
 
+  // No insets.bottom — the bottom tab bar already reserves its own
+  // safe-area-bottom space, see SafetyDashboard.tsx's comment for why
+  // adding it again double-counted and only showed up on devices with a
+  // large bottom inset.
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
         className="flex-1 px-6 py-6"
-        contentContainerStyle={{ gap: 24, paddingBottom: 32 }}
+        contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
       >
         <View
           className="items-center rounded-2xl px-6 py-8"
@@ -243,6 +248,12 @@ export function ProfileTab({ navigation }: Props) {
               icon={Wallet}
               label="Pemasukan bulanan"
               value={profile ? formatRupiah(profile.monthlyIncome) : "-"}
+            />
+            <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
+            <InfoRow
+              icon={Utensils}
+              label="Pengeluaran sehari-hari"
+              value={profile ? formatRupiah(profile.monthlyExpenses) : "-"}
             />
             <View style={{ height: 1, backgroundColor: "#E2E8F0" }} />
             <InfoRow
@@ -313,20 +324,20 @@ export function ProfileTab({ navigation }: Props) {
             Testing
           </Text>
           <Text className="font-body text-sm text-neutral" style={{ opacity: 0.7 }}>
-            Belum ada cicilan yang jatuh tempo? Buat satu dummy dulu (jatuh tempo besok),
-            baru picu reminder-nya.
+            Reset status "sudah disisihkan hari ini" ke false/null, tanpa perlu menunggu
+            hari berikutnya — supaya warning & reminder check-in bisa dites ulang.
           </Text>
           <SecondaryButton
-            label={creatingDueEntry ? "Membuat..." : "Buat cicilan jatuh tempo (debug)"}
-            onPress={handleCreateDueEntry}
-            disabled={creatingDueEntry}
-            testID="debug-create-due-entry-button"
+            label={resettingCheckIn ? "Mereset..." : "Reset status check-in hari ini (debug)"}
+            onPress={handleResetCheckIn}
+            disabled={resettingCheckIn}
+            testID="debug-reset-checkin-button"
           />
-          {dueEntryResult ? (
+          {resetCheckInResult ? (
             <StatusToast
-              message={dueEntryResult.message}
-              variant={dueEntryResult.variant === "success" ? "success" : "error"}
-              onDismiss={() => setDueEntryResult(null)}
+              message={resetCheckInResult.message}
+              variant={resetCheckInResult.variant === "success" ? "success" : "error"}
+              onDismiss={() => setResetCheckInResult(null)}
             />
           ) : null}
 

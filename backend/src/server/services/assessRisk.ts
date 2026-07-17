@@ -32,6 +32,7 @@ export async function assessRiskForPhone(input: AssessRiskInput) {
 
   const risk = calculateRiskScore({
     monthlyIncome: profile.monthlyIncome,
+    monthlyExpenses: profile.monthlyExpenses,
     existingMonthlyDebt: profile.existingMonthlyDebt,
     monthlyInstallment: simulation.monthlyInstallment,
     tenorMonths: input.tenorMonths,

@@ -22,7 +22,8 @@
       }
     },
     "android": {
-      "package": "com.nera.app"
+      "package": "com.nera.app",
+      "permissions": ["android.permission.PACKAGE_USAGE_STATS"]
     },
     "web": {
       "bundler": "metro"

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { CreditCard, Lock, PieChart, ShieldCheck, Users, Wallet } from "lucide-react-native";
+import { CreditCard, Lock, PieChart, ShieldCheck, Users, Utensils, Wallet } from "lucide-react-native";
 
 import { ApiError, upsertProfile } from "../api/client";
 import { BackButton } from "../components/BackButton";
@@ -19,6 +19,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "FinancialSurvivalCheck"
 
 interface Draft extends Record<string, string> {
   incomeText: string;
+  expensesText: string;
   debtText: string;
   dependentsText: string;
 }
@@ -40,6 +41,7 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
   const phone = useSessionStore((state) => state.phone);
 
   const [incomeText, setIncomeText] = useState("");
+  const [expensesText, setExpensesText] = useState("");
   const [debtText, setDebtText] = useState("");
   const [dependentsText, setDependentsText] = useState("0");
   const [submitting, setSubmitting] = useState(false);
@@ -50,19 +52,26 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
   useEffect(() => {
     loadDraft<Draft>(DRAFT_KEY).then((draft) => {
       if (draft.incomeText !== undefined) setIncomeText(draft.incomeText);
+      if (draft.expensesText !== undefined) setExpensesText(draft.expensesText);
       if (draft.debtText !== undefined) setDebtText(draft.debtText);
       if (draft.dependentsText !== undefined) setDependentsText(draft.dependentsText);
     });
   }, []);
 
   useEffect(() => {
-    saveDraft<Draft>(DRAFT_KEY, { incomeText, debtText, dependentsText });
-  }, [incomeText, debtText, dependentsText]);
+    saveDraft<Draft>(DRAFT_KEY, { incomeText, expensesText, debtText, dependentsText });
+  }, [incomeText, expensesText, debtText, dependentsText]);
 
   const income = parseAmount(incomeText);
+  const expenses = parseAmount(expensesText);
   const debt = parseAmount(debtText);
   const dependents = parseAmount(dependentsText);
-  const debtRatioPct = income > 0 ? Math.round((debt / income) * 100) : null;
+  // Mirrors backend/src/server/logic/riskScore.ts's disposable-income
+  // calculation — this preview isn't authoritative, the real score always
+  // comes from risk.assess, but it's kept in sync so the ratio shown here
+  // doesn't contradict what the user sees on the result screen.
+  const disposableIncome = Math.max(0, income - expenses);
+  const debtRatioPct = disposableIncome > 0 ? Math.round((debt / disposableIncome) * 100) : null;
 
   const isValid = income > 0;
 
@@ -75,6 +84,7 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
       await upsertProfile({
         phone,
         monthlyIncome: income,
+        monthlyExpenses: expenses,
         existingMonthlyDebt: debt,
         dependents,
       });
@@ -100,7 +110,9 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
         contentContainerStyle={{ gap: 24, paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
       >
-        <BackButton testID="fsc-back-button" onPress={() => navigation.goBack()} />
+        {navigation.canGoBack() ? (
+          <BackButton testID="fsc-back-button" onPress={() => navigation.goBack()} />
+        ) : null}
 
         <StepProgressHeader currentStep={CURRENT_STEP} totalSteps={TOTAL_STEPS} />
 
@@ -132,6 +144,20 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
             helperText="Semua sumber pendapatan, termasuk uang saku & freelance."
           />
 
+          <IconCircleField
+            testID="fsc-expenses-input"
+            icon={Utensils}
+            iconTint={`${colors.warning}1F`}
+            iconColor={colors.warning}
+            label="Pengeluaran bulanan (kebutuhan sehari-hari)"
+            value={expensesText}
+            onChangeText={setExpensesText}
+            placeholder="Contoh: 1.200.000"
+            prefix="Rp"
+            keyboardType="number-pad"
+            helperText="Makan, transport, kos, dll — bukan cicilan/utang (itu di bawah)."
+          />
+
           <View style={{ gap: 8 }}>
             <IconCircleField
               testID="fsc-debt-input"
@@ -157,7 +183,7 @@ export function FinancialSurvivalCheck({ navigation }: Props) {
                   <Text className="font-heading" style={{ color: colors.secondary }}>
                     {debtRatioPct}%
                   </Text>{" "}
-                  dari pemasukanmu ({formatRupiah(debt)}/bulan)
+                  dari pemasukan bersihmu setelah pengeluaran ({formatRupiah(debt)}/bulan)
                 </Text>
               </View>
             ) : null}

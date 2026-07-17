@@ -106,6 +106,7 @@ export const remindersRouter = createTRPCRouter({
       const simulation = simulateLoan({ principal, interestRatePct, serviceFee, tenorMonths });
       const risk = calculateRiskScore({
         monthlyIncome: profile.monthlyIncome,
+        monthlyExpenses: profile.monthlyExpenses,
         existingMonthlyDebt: profile.existingMonthlyDebt,
         monthlyInstallment: simulation.monthlyInstallment,
         tenorMonths,

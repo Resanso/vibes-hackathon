@@ -1,9 +1,14 @@
 import cron from "node-cron";
-import type { Api } from "grammy";
+import { InlineKeyboard, type Api } from "grammy";
 
 import { backend } from "../api/backendClient.js";
 import { env } from "../env.js";
 import { logger as defaultLogger } from "../logger.js";
+
+// Callback data read by the "checkin:" handler in checkInButtons.js —
+// keep this prefix in sync between the two files.
+export const CHECKIN_DONE_DATA = "checkin:done";
+export const CHECKIN_PENDING_DATA = "checkin:pending";
 
 function formatRupiah(amount: number): string {
   return `Rp${amount.toLocaleString("id-ID")}`;
@@ -36,13 +41,16 @@ export async function sendCheckInReminders(
     const text = [
       "Halo! Udah nyisihkan uang buat cicilan hari ini?",
       `Target harian kamu: ${formatRupiah(item.dailyTargetAmount)}.`,
-      "Kirim /sudah kalau sudah kamu sisihkan.",
       "",
       "Ingat: kalau belum sempat, jangan pinjam lagi cuma buat nutup cicilan ini — itu awal dari spiral utang yang susah keluar.",
     ].join("\n");
 
+    const keyboard = new InlineKeyboard()
+      .text("✅ Sudah", CHECKIN_DONE_DATA)
+      .text("⏳ Belum", CHECKIN_PENDING_DATA);
+
     try {
-      await api.sendMessage(profile.telegramChatId, text);
+      await api.sendMessage(profile.telegramChatId, text, { reply_markup: keyboard });
       sent++;
     } catch (error) {
       logger.error({ error, phone: item.phone }, "Failed to send check-in reminder");

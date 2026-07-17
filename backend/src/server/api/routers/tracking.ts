@@ -15,7 +15,7 @@ async function loadStatusByPhone(phone: string) {
   const tracking = await db.loanTracking.findFirst({
     where: { phone },
     orderBy: { startedAt: "desc" },
-    include: { riskEntry: true, checkIns: true },
+    include: { riskEntry: { include: { profile: true } }, checkIns: true },
   });
   if (!tracking) return null;
 
@@ -23,6 +23,8 @@ async function loadStatusByPhone(phone: string) {
     dailyTargetAmount: tracking.dailyTargetAmount,
     totalRepayment: tracking.riskEntry.totalRepayment,
     checkInDates: tracking.checkIns.map((c) => c.date),
+    monthlyIncome: tracking.riskEntry.profile.monthlyIncome,
+    monthlyExpenses: tracking.riskEntry.profile.monthlyExpenses,
   });
 
   return {
@@ -98,6 +100,33 @@ export const trackingRouter = createTRPCRouter({
         create: { loanTrackingId: tracking.id, date, source: input.source },
         update: {},
       });
+    }),
+
+  // Testing-only: deletes today's DailyCheckIn (if any) for the caller's
+  // most recent tracking, so confirmedToday flips back to false/null
+  // without waiting for the next calendar day — lets the "belum
+  // menyisihkan hari ini" warning + reminder flow be re-tested repeatedly.
+  debugResetCheckIn: apiKeyProcedure
+    .input(z.object({ phone: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tracking = await ctx.db.loanTracking.findFirst({
+        where: { phone: input.phone },
+        orderBy: { startedAt: "desc" },
+      });
+      if (!tracking) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Belum ada pinjaman yang di-track untuk nomor ini.",
+        });
+      }
+
+      const date = startOfDayUTC(new Date());
+
+      await ctx.db.dailyCheckIn.deleteMany({
+        where: { loanTrackingId: tracking.id, date },
+      });
+
+      return loadStatusByPhone(input.phone);
     }),
 
   // The caller's most recent active tracking + computed progress, or null

@@ -17,6 +17,7 @@ export const profileRouter = createTRPCRouter({
       z.object({
         phone: z.string().min(1),
         monthlyIncome: z.number().int().nonnegative(),
+        monthlyExpenses: z.number().int().nonnegative().default(0),
         existingMonthlyDebt: z.number().int().nonnegative().default(0),
         dependents: z.number().int().nonnegative().default(0),
       }),
@@ -34,6 +35,7 @@ export const profileRouter = createTRPCRouter({
         where: { phone: input.phone },
         data: {
           monthlyIncome: input.monthlyIncome,
+          monthlyExpenses: input.monthlyExpenses,
           existingMonthlyDebt: input.existingMonthlyDebt,
           dependents: input.dependents,
           onboardingCompletedAt: existing.onboardingCompletedAt ?? new Date(),

@@ -2,6 +2,7 @@ import { Bot } from "grammy";
 
 import { env } from "./env.js";
 import { handleChatMessage } from "./handlers/chatHandler.js";
+import { handleCheckInButton } from "./handlers/checkInButtons.js";
 import { handleContactShared, handleStartCommand } from "./handlers/linking.js";
 import { logger } from "./logger.js";
 
@@ -10,6 +11,7 @@ export function createBot(): Bot {
 
   bot.command("start", handleStartCommand);
   bot.on("message:contact", handleContactShared);
+  bot.on("callback_query:data", handleCheckInButton);
 
   // Everything else is free-text AI Coach — see chatHandler.ts. The old
   // /cek and /sudah fixed-command format is gone; the model figures out

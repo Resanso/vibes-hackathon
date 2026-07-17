@@ -32,6 +32,12 @@ model Profile {
     monthlyIncome       Int @default(0)
     existingMonthlyDebt Int @default(0)
     dependents          Int @default(0)
+    // Self-reported daily-living costs (makan, transport, dsb) — NOT
+    // existingMonthlyDebt (that's debt obligations, this is cost of living).
+    // Used to compute disposable income for the risk score instead of raw
+    // monthlyIncome, so someone with high income but also high living costs
+    // isn't scored as if all their income were available for debt service.
+    monthlyExpenses     Int @default(0)
 
     // Set once profile.upsert (FinancialSurvivalCheck) has actually run —
     // NOT inferable from monthlyIncome alone, since a genuinely-zero income

@@ -95,6 +95,7 @@ export interface Profile {
   email: string;
   name: string | null;
   monthlyIncome: number;
+  monthlyExpenses: number;
   existingMonthlyDebt: number;
   dependents: number;
   onboardingCompletedAt: string | null;
@@ -138,6 +139,7 @@ export function getSession(token: string): Promise<Profile> {
 export interface UpsertProfileInput {
   phone: string;
   monthlyIncome: number;
+  monthlyExpenses: number;
   existingMonthlyDebt: number;
   dependents: number;
 }
@@ -237,6 +239,10 @@ export interface TrackingStatus {
   amountSaved: number;
   remainingAmount: number;
   confirmedToday: boolean;
+  // Disposable income (income - expenses) spread across this month —
+  // informational, not enforced. See backend's loanTracking.ts.
+  dailyDisposableIncome: number;
+  targetExceedsDisposableIncome: boolean;
 }
 
 export function startTracking(riskEntryId: string): Promise<TrackingStatus> {
@@ -249,6 +255,12 @@ export function checkInTracking(phone: string): Promise<unknown> {
 
 export function getTrackingStatus(phone: string): Promise<TrackingStatus | null> {
   return trpcQuery<TrackingStatus | null>("tracking.status", { phone });
+}
+
+// Testing-only: flips confirmedToday back to false/null for the caller's
+// tracking without waiting for the next calendar day. See ProfileTab.
+export function debugResetCheckIn(phone: string): Promise<TrackingStatus | null> {
+  return trpcMutation<TrackingStatus | null>("tracking.debugResetCheckIn", { phone });
 }
 
 export interface ChatMessage {
