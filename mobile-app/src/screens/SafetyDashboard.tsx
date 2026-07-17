@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, SafeAreaView, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AlertTriangle, Bell, Calendar1, CircleCheck, Sparkles } from "lucide-react-native";
 
 import {
@@ -154,8 +155,8 @@ export function SafetyDashboard() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <ScrollView
-        className="flex-1 px-6 py-6"
-        contentContainerStyle={{ gap: 24, paddingBottom: 32 }}
+        className="flex-1 px-6 pt-6"
+        contentContainerStyle={{ gap: 24, paddingBottom: 100 }}
       >
         <View className="flex-row items-start justify-between">
           <Image

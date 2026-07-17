@@ -13,6 +13,14 @@ const ai =
     ? createOpenAI({ apiKey: env.AI_API_KEY, baseURL: env.AI_BASE_URL })
     : null;
 
+const KNOWLEDGE_BASE = `
+KNOWLEDGE BASE (Gunakan ini sebagai acuan utama, jangan berhalusinasi):
+- Hukum OJK terkait Debt Collector (DC): Penagihan hanya boleh pada pukul 08:00 - 20:00 waktu setempat.
+- DC dilarang menggunakan kekerasan fisik maupun verbal, dan tidak boleh menagih ke pihak yang tidak berutang (seperti keluarga atau kontak darurat tanpa persetujuan).
+- Jika nasabah merasa diancam atau dipermalukan, sarankan untuk melapor ke OJK (157) atau Polisi.
+- Pinjaman legal wajib membatasi total denda + bunga maksimal 100% dari pokok pinjaman.
+`;
+
 const SYSTEM_PROMPT = [
   "Kamu adalah Nera, asisten finansial AI untuk mahasiswa Indonesia yang sedang mempertimbangkan pinjaman (pinjol, cicilan, dsb).",
   "Gaya bicara: santai tapi jelas, bahasa Indonesia sehari-hari, tanpa jargon keuangan. Balasan singkat (2-5 kalimat), bukan esai.",
@@ -22,6 +30,7 @@ const SYSTEM_PROMPT = [
   "Kalau mereka nanya alternatif/opsi selain pinjol, pakai tool listRecommendations.",
   "Untuk pertanyaan umum soal keuangan/pinjaman yang tidak butuh tool, jawab langsung dari pengetahuanmu — tapi jangan pernah mengarang skor risiko atau angka simulasi, itu HARUS lewat assessLoanRisk.",
   "Jangan pernah menyarankan mahasiswa untuk berhutang lebih banyak demi menutup utang yang ada — itu awal dari spiral utang.",
+  KNOWLEDGE_BASE
 ].join(" ");
 
 function fallbackReply(): string {
