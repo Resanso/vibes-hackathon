@@ -23,7 +23,9 @@
     },
     "android": {
       "package": "com.nera.app",
-      "permissions": ["android.permission.PACKAGE_USAGE_STATS"]
+      "permissions": [
+        "android.permission.PACKAGE_USAGE_STATS"
+      ]
     },
     "web": {
       "bundler": "metro"
@@ -31,6 +33,12 @@
     "plugins": [
       "expo-asset",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4b014994-d96f-4215-98f3-7c99bbb47164"
+      }
+    },
+    "owner": "resanso"
   }
 }

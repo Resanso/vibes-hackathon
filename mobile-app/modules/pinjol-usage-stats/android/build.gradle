@@ -8,12 +8,18 @@ def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.ab
 apply from: expoModulesCorePlugin
 applyKotlinExpoModulesCorePlugin()
 useCoreDependencies()
-useExpoPublishing()
+// `getMinSdkVersion()`/`getTargetSdkVersion()` used here previously don't
+// exist on ExpoModulesCorePlugin.gradle (confirmed by grepping the actual
+// file) and, worse, never set `compileSdkVersion` at all — this is what an
+// EAS cloud build surfaced as "project ':pinjol-usage-stats' does not
+// specify `compileSdk`" plus a broken 'release' SoftwareComponent from
+// `useExpoPublishing()` (which needs compileSdk to resolve the release
+// variant). `useDefaultAndroidSdkVersions()` is the real helper — sets
+// compileSdk/minSdk/targetSdk together from the root project's ext values.
+// Dropped `useExpoPublishing()` too: this module is local-only, never
+// published, so the maven-publish setup was dead weight.
+useDefaultAndroidSdkVersions()
 
 android {
   namespace "expo.modules.pinjolusagestats"
-  defaultConfig {
-    minSdkVersion getMinSdkVersion()
-    targetSdkVersion getTargetSdkVersion()
-  }
 }

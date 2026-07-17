@@ -24,11 +24,18 @@ class PinjolUsageStatsModule : Module() {
     }
 
     Function("openUsageAccessSettings") {
-      val context = appContext.reactContext ?: return@Function
-      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      // `return@Function` here previously forced the lambda's inferred
+      // return type to clash with the Any?-typed Function() DSL body
+      // ("Return type mismatch: expected 'Any?', actual 'Unit'", caught by
+      // an EAS cloud build 2026-07-17) — an `if` avoids the early-return
+      // entirely so the whole lambda stays Unit-typed throughout.
+      val context = appContext.reactContext
+      if (context != null) {
+        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
       }
-      context.startActivity(intent)
     }
 
     AsyncFunction("getPinjolUsageStats") { packageNames: List<String>, sinceEpochMs: Double, untilEpochMs: Double ->
