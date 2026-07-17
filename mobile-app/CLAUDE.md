@@ -2,21 +2,39 @@
 
 React Native client — the **only** frontend in this product (no separate web
 dashboard). See root `.claude/rules/product-context.md` for the original
-7-step flow concept — **superseded** by the architecture below: a 5-step
-onboarding stack (Onboarding → FinancialSurvivalCheck → BorrowingScenario →
+7-step flow concept — **superseded** by the architecture below: real
+email+password auth (Login/Register) gates a 5-step onboarding stack
+(Register → FinancialSurvivalCheck → BorrowingScenario →
 FinancialRiskIntelligence → DecisionSupport), then a persistent 5-tab
 bottom navigator (Beranda/Cek Baru/Alternatif/Edukasi/Profil) as the app's
 home. `AICoach` was dropped from scope — the tab bar's `Edukasi`/`Profil`
 tabs cover what it would have.
 
-All 5 onboarding screens + the tab navigator + all 5 tabs exist and are
+**Auth, added 2026-07-17**: the old bare `Onboarding` screen (name+phone,
+no credentials, no persistence) was replaced by `Register` (name, phone,
+email, password → `auth.register`) and a new `Login` screen (email,
+password → `auth.login`), both calling `backend`'s real auth endpoints (see
+`backend/CLAUDE.md`'s "Auth" section). A session (`{ phone, name, token }`)
+now persists across app restarts via `expo-secure-store` — `App.tsx` calls
+`useSessionStore`'s `restoreSession()` on boot, which verifies the stored
+token against `auth.me` (not just trusts it's present) before deciding the
+initial route: `Login` (no valid session), `FinancialSurvivalCheck` (logged
+in, `onboardingCompletedAt` still null), or straight to `MainTabs`
+(logged in and already onboarded — no repeated onboarding every launch).
+`ProfileTab`'s "Keluar" button (`logout-button` testID) clears the stored
+session via the same `clearSession()` used for testing purposes.
+
+All onboarding screens + the tab navigator + all 5 tabs exist and are
 wired up. Design pass against reference mockups in `design-reference/` is
-done for `Onboarding`, `FinancialSurvivalCheck`, `FinancialRiskIntelligence`
-(the calibration screens); `BorrowingScenario`, `DecisionSupport`,
-`SafetyDashboard` got a lighter pass using the same components. Character
-illustrations from the reference mockups were **deliberately skipped**
-(icon + layout + copy only) — deprioritized as a time sink relative to
-finishing every screen; nice-to-have if time allows before submission.
+done for `FinancialSurvivalCheck`, `FinancialRiskIntelligence` (the
+calibration screens; the old `Onboarding` mockup pass doesn't carry over
+1:1 to `Register`/`Login`, which reuse the same visual language but weren't
+individually re-validated against the reference); `BorrowingScenario`,
+`DecisionSupport`, `SafetyDashboard` got a lighter pass using the same
+components. Character illustrations from the reference mockups were
+**deliberately skipped** (icon + layout + copy only) — deprioritized as a
+time sink relative to finishing every screen; nice-to-have if time allows
+before submission.
 
 ## Stack
 
@@ -70,15 +88,24 @@ finishing every screen; nice-to-have if time allows before submission.
   `DecisionSupport.tsx`'s exported `RecommendationList`), `Edukasi`
   (`EducationPlaceholder`, no content model yet — genuinely just a
   placeholder), `Profil` (`ProfileTab`, real `profile.get` data, read-only).
-- `src/screens/` — `Onboarding`, `FinancialSurvivalCheck`,
-  `BorrowingScenario`, `FinancialRiskIntelligence`, `DecisionSupport` (all 5
-  onboarding steps), `SafetyDashboard`, `AlternativesTab`,
-  `EducationPlaceholder`, `ProfileTab` (all 5 tabs).
-- `src/store/sessionStore.ts` — Zustand, session-only, `{ phone, name }` set
-  once in `Onboarding`. **Never select an object literal out of a Zustand
-  store** (`useStore((s) => ({ a: s.a, b: s.b }))`) — it returns a new
-  reference every render and causes an infinite re-render loop
-  ("Maximum update depth exceeded"). Select each primitive field separately.
+- `src/screens/` — `Login`, `Register` (auth, gate everything below),
+  `FinancialSurvivalCheck`, `BorrowingScenario`, `FinancialRiskIntelligence`,
+  `DecisionSupport` (onboarding steps after auth), `SafetyDashboard`,
+  `AlternativesTab`, `EducationPlaceholder`, `ProfileTab` (all 5 tabs).
+  `Register.tsx` exports a shared `Field` component that `Login.tsx` also
+  imports — small enough that a separate `components/` file felt like
+  premature extraction for two consumers.
+- `src/store/sessionStore.ts` — Zustand, now persisted (not session-only —
+  the name is legacy). `{ phone, name, token, onboardingCompletedAt,
+  isRestoring }`, set by `Register`/`Login` via `setSession()`, or restored
+  on boot via `restoreSession()` (verifies the token against `auth.me`
+  rather than trusting `expo-secure-store` blindly). `clearSession()` powers
+  both a real "Keluar" tap and `ProfileTab`'s testing-only reset — same
+  effect either way, forget the local session so the app boots back into
+  `Login`. **Never select an object literal out of a Zustand store**
+  (`useStore((s) => ({ a: s.a, b: s.b }))`) — it returns a new reference
+  every render and causes an infinite re-render loop ("Maximum update depth
+  exceeded"). Select each primitive field separately.
 - `src/utils/formDraft.ts` — in-memory (not persisted across app restarts)
   draft storage so typed form values survive navigating away and back
   within a session. Not backed by AsyncStorage — that native module wasn't
@@ -168,11 +195,13 @@ touched nothing under `mobile-app/` — see the guard at the top of
 `run-ios-tests.sh` — so it doesn't slow down `backend`/`whatsapp-service`
 sessions.
 
-All 5 onboarding-step flows exist (`onboarding.yaml`,
+All onboarding-step flows exist (`register.yaml`,
 `financial-survival-check.yaml`, `borrowing-scenario.yaml`,
 `financial-risk-intelligence.yaml`, `decision-support.yaml`), plus
-`safety-dashboard.yaml` (replays onboarding through to the tab bar),
-`main-tabs.yaml` (exercises all 5 tabs after onboarding), and
+`login.yaml` (register → complete onboarding → logout → log back in,
+proving both the round-trip and the "skip onboarding for a returning user"
+behavior), `safety-dashboard.yaml` (replays register+onboarding through to
+the tab bar), `main-tabs.yaml` (exercises all 5 tabs after onboarding), and
 `cek-baru.yaml` (the standalone `BorrowingScenario`→`FinancialRiskIntelligence`
 loop triggered from the `Cek Baru` tab). No flow for `AICoach` — dropped
 from scope. `Edukasi`/`Alternatif`/`Profil` tabs are covered inline within
@@ -180,8 +209,16 @@ from scope. `Edukasi`/`Alternatif`/`Profil` tabs are covered inline within
 they're simple enough to assert in-line without replaying onboarding
 separately each time.
 
+**Every flow that replays registration generates a unique phone/email per
+run** (`- evalScript: ${output.uniqueId = Date.now()}`, then
+`08${output.uniqueId}` / `test${output.uniqueId}@nera.test`) — `auth.register`
+now enforces real uniqueness on both fields (unlike the old `profile.upsert`,
+which was a true upsert keyed by a hardcoded test phone). A flow hardcoding
+a fixed phone/email will pass once and then fail every run after with a
+CONFLICT error.
+
 `financial-survival-check.yaml` has no deep link to reach that screen
-directly yet, so it replays the `Onboarding` steps first before testing its
+directly yet, so it replays the `Register` steps first before testing its
 own elements — normal for flows further down a linear stack with no deep
 linking configured.
 

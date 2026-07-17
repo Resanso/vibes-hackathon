@@ -65,10 +65,47 @@ Run with `npm run <script>`:
 - `generated/prisma/` — generated Prisma client output. **Do not hand-edit**; regenerated via `postinstall`/`prisma generate`.
 - `src/env.js` — typed, validated environment variables (server vars under `server`, public vars under `client`, must be listed in `runtimeEnv`).
 
+## Auth (email + password, real — not the shared API key)
+
+`profile` gained real login on 2026-07-17: `email` (unique), `passwordHash`
+(bcryptjs, never returned to clients — see "passwordHash never leaks" below),
+`name`, `onboardingCompletedAt`. `phone` stays the primary/foreign key
+throughout (RiskEntry, LoanTracking, whatsapp/telegram-service message
+routing all already keyed off it before auth existed) — auth was layered on
+top rather than migrating everything to a generated id.
+
+- `auth.register` (`apiKeyProcedure`) — creates the Profile row itself
+  (name/phone/email/passwordHash). `monthlyIncome`/`existingMonthlyDebt`/
+  `dependents` start at their schema defaults (0); `profile.upsert`
+  (FinancialSurvivalCheck) fills those in afterward and sets
+  `onboardingCompletedAt`.
+- `auth.login` (`apiKeyProcedure`) — email + password → bcrypt compare →
+  issues a JWT (`src/server/auth/jwt.ts`, 30-day expiry).
+- `auth.me` (`authedProcedure`) — the ONE endpoint that actually verifies a
+  JWT bearer token server-side, rather than every router just trusting
+  `SHARED_API_KEY` the way they did before. `mobile-app` calls this on boot
+  to confirm a locally-stored token is still genuinely valid, not just
+  present in `SecureStore`.
+
+**Scope decision, not an oversight**: every other router (`profile.upsert`,
+`risk.assess`, etc.) still uses plain `apiKeyProcedure` — whoever holds
+`SHARED_API_KEY` can act as any `phone` they pass in, exactly like before
+auth existed. Converting every existing router/screen/service call to
+require a JWT bearer too would be a much larger rework; `authedProcedure`
+(see `trpc.ts`) exists specifically so that can happen incrementally later
+without re-deriving the JWT plumbing from scratch.
+
+**`passwordHash` never leaks**: `src/server/db.ts`'s `PrismaClient` sets a
+global `omit: { profile: { passwordHash: true } }` — every query anywhere
+in the codebase gets it stripped automatically. `auth.login` is the one
+place that overrides this per-query (`omit: { passwordHash: false }`) to
+actually read it for the bcrypt compare.
+
 ## Core API responsibilities (map to the 7-step flow)
 
 tRPC routers under `src/server/api/routers/`:
 
+0. `auth` — register/login/me, see "Auth" above
 1. `profile` — self-reported financial profile (step 2)
 2. `simulation` — true cost-of-credit calculator (nominal + interest + service
    fee + tenor → total repayment + late-payment projection). Pure math, no AI.

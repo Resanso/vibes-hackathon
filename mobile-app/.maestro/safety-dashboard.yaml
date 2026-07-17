@@ -4,11 +4,21 @@ appId: com.nera.app
 ---
 - launchApp:
     clearState: true
+- evalScript: ${output.uniqueId = Date.now()}
 - tapOn:
-    id: "onboarding-phone-input"
-- inputText: "081234567890"
+    id: "register-name-input"
+- inputText: "Test User"
 - tapOn:
-    id: "onboarding-start-button"
+    id: "register-phone-input"
+- inputText: "08${output.uniqueId}"
+- tapOn:
+    id: "register-email-input"
+- inputText: "test${output.uniqueId}@nera.test"
+- tapOn:
+    id: "register-password-input"
+- inputText: "password123"
+- tapOn:
+    id: "register-submit-button"
 - assertVisible: "Cek Kondisi Keuanganmu"
 - tapOn:
     id: "fsc-income-input"

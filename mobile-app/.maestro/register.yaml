@@ -1,0 +1,23 @@
+appId: com.nera.app
+---
+- launchApp:
+    clearState: true
+- evalScript: ${output.uniqueId = Date.now()}
+- assertVisible: "Nera"
+- assertVisible:
+    id: "register-submit-button"
+- tapOn:
+    id: "register-name-input"
+- inputText: "Test User"
+- tapOn:
+    id: "register-phone-input"
+- inputText: "08${output.uniqueId}"
+- tapOn:
+    id: "register-email-input"
+- inputText: "test${output.uniqueId}@nera.test"
+- tapOn:
+    id: "register-password-input"
+- inputText: "password123"
+- tapOn:
+    id: "register-submit-button"
+- assertVisible: "Cek Kondisi Keuanganmu"

@@ -76,17 +76,63 @@ export async function trpcMutation<T>(path: string, input: unknown): Promise<T> 
   return unwrap<T>(response);
 }
 
+// Only auth.me needs this — every other router still trusts the shared API
+// key alone (see backend/src/server/api/trpc.ts's authedProcedure comment
+// for why this wasn't rolled out everywhere yet).
+export async function trpcAuthedQuery<T>(path: string, input: unknown, token: string): Promise<T> {
+  const encodedInput = encodeURIComponent(JSON.stringify({ json: input }));
+  const response = await fetch(
+    `${BACKEND_URL}/api/trpc/${path}?input=${encodedInput}`,
+    { headers: { ...headers, authorization: `Bearer ${token}` } },
+  );
+  return unwrap<T>(response);
+}
+
 export type NotificationChannel = "whatsapp" | "telegram";
 
 export interface Profile {
   phone: string;
+  email: string;
+  name: string | null;
   monthlyIncome: number;
   existingMonthlyDebt: number;
   dependents: number;
+  onboardingCompletedAt: string | null;
   createdAt: string;
   updatedAt: string;
   notificationChannel: NotificationChannel;
   telegramChatId: string | null;
+}
+
+export interface AuthResult {
+  token: string;
+  profile: Profile;
+}
+
+export interface RegisterInput {
+  name: string;
+  phone: string;
+  email: string;
+  password: string;
+}
+
+export function register(input: RegisterInput): Promise<AuthResult> {
+  return trpcMutation<AuthResult>("auth.register", input);
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export function login(input: LoginInput): Promise<AuthResult> {
+  return trpcMutation<AuthResult>("auth.login", input);
+}
+
+// Verifies a stored token is still genuinely valid — used on app boot
+// instead of trusting whatever's in SecureStore blindly.
+export function getSession(token: string): Promise<Profile> {
+  return trpcAuthedQuery<Profile>("auth.me", undefined, token);
 }
 
 export interface UpsertProfileInput {

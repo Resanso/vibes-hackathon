@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, SafeAreaView, ScrollView, Text, View } from "react-native";
 import { Calendar1, CreditCard, Phone, Send, User, Users, Wallet } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import {
   ApiError,
@@ -14,6 +16,8 @@ import {
 import { SecondaryButton } from "../components/SecondaryButton";
 import { StatusToast } from "../components/StatusToast";
 import { colors } from "../theme/colors";
+import type { MainTabParamList } from "../navigation/MainTabNavigator";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useSessionStore } from "../store/sessionStore";
 
 // The actual bot registered for this project via @BotFather — see
@@ -52,12 +56,15 @@ function InfoRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string
   );
 }
 
+type Props = BottomTabScreenProps<MainTabParamList, "Profil">;
+
 // Real data from profile.get — not a mock. Shows exactly what the student
 // entered in FinancialSurvivalCheck; there's no separate "edit profile" flow
 // yet, so this is read-only.
-export function ProfileTab() {
+export function ProfileTab({ navigation }: Props) {
   const phone = useSessionStore((state) => state.phone);
   const name = useSessionStore((state) => state.name);
+  const clearSession = useSessionStore((state) => state.clearSession);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -131,6 +138,18 @@ export function ProfileTab() {
 
   function handleOpenTelegramBot() {
     void Linking.openURL(`https://t.me/${TELEGRAM_BOT_USERNAME}`);
+  }
+
+  // Same effect for a real "Keluar" tap and the testing-only "Reset
+  // Onboarding" use case — clears the local session so the app boots back
+  // into Login. The backend account itself isn't touched: logging back in
+  // with the same email/password immediately resumes at MainTabs (if
+  // onboardingCompletedAt is set) or FinancialSurvivalCheck otherwise.
+  async function handleLogout() {
+    await clearSession();
+    navigation
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.reset({ index: 0, routes: [{ name: "Login" }] });
   }
 
   useEffect(() => {
@@ -274,6 +293,17 @@ export function ProfileTab() {
               onDismiss={() => setTriggerResult(null)}
             />
           ) : null}
+        </View>
+
+        <View className="rounded-2xl border px-4 py-4" style={{ borderColor: "#CBD5E1", gap: 12 }}>
+          <Text className="font-heading text-sm text-neutral" style={{ opacity: 0.5 }}>
+            Akun
+          </Text>
+          <SecondaryButton
+            label="Keluar"
+            onPress={handleLogout}
+            testID="logout-button"
+          />
         </View>
       </ScrollView>
     </SafeAreaView>

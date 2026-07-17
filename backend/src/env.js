@@ -12,6 +12,12 @@ export const env = createEnv({
       .enum(["development", "test", "production"])
       .default("development"),
     SHARED_API_KEY: z.string().min(1),
+    // Signs/verifies mobile-app's login session tokens — see
+    // src/server/auth/jwt.ts. Distinct from SHARED_API_KEY: that one
+    // authenticates *services* (mobile-app/whatsapp-service/telegram-service
+    // as trusted infra calling this API at all), this one authenticates
+    // *which student* is calling, issued only after a real password check.
+    JWT_SECRET: z.string().min(32),
     MAIA_API_KEY: z.string().optional(),
     MAIA_BASE_URL: z.string().url().optional(),
     // whatsapp-service's localhost-only internal trigger server (same VPS) —
@@ -39,6 +45,7 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     SHARED_API_KEY: process.env.SHARED_API_KEY,
+    JWT_SECRET: process.env.JWT_SECRET,
     MAIA_API_KEY: process.env.MAIA_API_KEY,
     MAIA_BASE_URL: process.env.MAIA_BASE_URL,
     WHATSAPP_SERVICE_URL: process.env.WHATSAPP_SERVICE_URL,

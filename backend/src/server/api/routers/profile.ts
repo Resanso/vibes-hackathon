@@ -6,6 +6,12 @@ import { apiKeyProcedure, createTRPCRouter } from "~/server/api/trpc";
 const channelSchema = z.enum(["whatsapp", "telegram"]);
 
 export const profileRouter = createTRPCRouter({
+  // Fills in the financial fields for FinancialSurvivalCheck — the Profile
+  // row itself is created by auth.register (which also sets email +
+  // passwordHash, required fields this input doesn't carry), so this is
+  // effectively update-only now despite the name: a missing profile means
+  // the student skipped registration, not something to silently paper over
+  // by creating a half-formed row.
   upsert: apiKeyProcedure
     .input(
       z.object({
@@ -16,13 +22,21 @@ export const profileRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return ctx.db.profile.upsert({
+      const existing = await ctx.db.profile.findUnique({ where: { phone: input.phone } });
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Belum terdaftar — register dulu lewat aplikasi Nera.",
+        });
+      }
+
+      return ctx.db.profile.update({
         where: { phone: input.phone },
-        create: input,
-        update: {
+        data: {
           monthlyIncome: input.monthlyIncome,
           existingMonthlyDebt: input.existingMonthlyDebt,
           dependents: input.dependents,
+          onboardingCompletedAt: existing.onboardingCompletedAt ?? new Date(),
         },
       });
     }),

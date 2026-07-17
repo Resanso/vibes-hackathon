@@ -11,6 +11,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { env } from "~/env";
+import { verifySessionToken } from "~/server/auth/jwt";
 import { db } from "~/server/db";
 
 /**
@@ -124,3 +125,30 @@ const apiKeyMiddleware = t.middleware(({ ctx, next }) => {
 });
 
 export const apiKeyProcedure = publicProcedure.use(apiKeyMiddleware);
+
+/**
+ * Authed (per-user) procedure
+ *
+ * Layers a real JWT bearer check on top of apiKeyProcedure — this is the
+ * ONE place a caller's identity is actually verified server-side (a signed,
+ * unexpired token issued by auth.login/auth.register), not just trusted
+ * because it was sent. Every other router still uses apiKeyProcedure alone
+ * (whoever holds SHARED_API_KEY can act as any `phone` they pass in) — that
+ * wasn't converted to require this too, since it'd mean reworking every
+ * existing screen/service call under this same pass. Currently only
+ * auth.me uses this; see that router for why (session-validity check on
+ * mobile-app boot, not full request-level authorization everywhere yet).
+ */
+const authMiddleware = t.middleware(({ ctx, next }) => {
+  const header = ctx.headers.get("authorization");
+  const token = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
+
+  const payload = token ? verifySessionToken(token) : null;
+  if (!payload) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Sesi tidak valid atau sudah habis." });
+  }
+
+  return next({ ctx: { ...ctx, phone: payload.phone } });
+});
+
+export const authedProcedure = apiKeyProcedure.use(authMiddleware);

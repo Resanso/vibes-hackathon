@@ -1,14 +1,25 @@
 # No deep link exists yet to reach MainTabs directly, so this flow replays
-# the full 5-step onboarding first, then exercises each of the 5 tabs.
+# Register + the full 5-step onboarding first, then exercises each of the 5
+# tabs.
 appId: com.nera.app
 ---
 - launchApp:
     clearState: true
+- evalScript: ${output.uniqueId = Date.now()}
 - tapOn:
-    id: "onboarding-phone-input"
-- inputText: "081234567890"
+    id: "register-name-input"
+- inputText: "Test User"
 - tapOn:
-    id: "onboarding-start-button"
+    id: "register-phone-input"
+- inputText: "08${output.uniqueId}"
+- tapOn:
+    id: "register-email-input"
+- inputText: "test${output.uniqueId}@nera.test"
+- tapOn:
+    id: "register-password-input"
+- inputText: "password123"
+- tapOn:
+    id: "register-submit-button"
 - assertVisible: "Cek Kondisi Keuanganmu"
 - tapOn:
     id: "fsc-income-input"
@@ -45,7 +56,7 @@ appId: com.nera.app
 - assertVisible: "Materi edukasi finansial akan hadir di sini."
 
 - tapOn: "Profil"
-- assertVisible: "081234567890"
+- assertVisible: "08${output.uniqueId}"
 
 - tapOn: "Beranda"
 - assertVisible: "Terus pantau skormu"

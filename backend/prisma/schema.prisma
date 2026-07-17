@@ -12,12 +12,37 @@ datasource db {
 }
 
 model Profile {
-    phone               String   @id
-    monthlyIncome       Int
-    existingMonthlyDebt Int      @default(0)
-    dependents          Int      @default(0)
-    createdAt           DateTime @default(now())
-    updatedAt           DateTime @updatedAt
+    phone String @id
+
+    // Real auth (email + password) — added after phone/reminders identity
+    // was already load-bearing everywhere else (RiskEntry, LoanTracking,
+    // whatsapp/telegram-service all key off `phone`), so `phone` stays the
+    // primary/foreign key throughout rather than migrating everything to a
+    // generated id. `register` collects both; `login` looks up by email,
+    // verifies passwordHash, then every subsequent call still keys off
+    // phone exactly as before auth existed.
+    email        String  @unique
+    passwordHash String
+    name         String?
+
+    // Nullable/defaulted so `auth.register` can create this row before
+    // FinancialSurvivalCheck runs — monthlyIncome/existingMonthlyDebt/
+    // dependents start at 0 and get their real values from
+    // profile.upsert, which also sets onboardingCompletedAt (see below).
+    monthlyIncome       Int @default(0)
+    existingMonthlyDebt Int @default(0)
+    dependents          Int @default(0)
+
+    // Set once profile.upsert (FinancialSurvivalCheck) has actually run —
+    // NOT inferable from monthlyIncome alone, since a genuinely-zero income
+    // is a valid real answer, not "hasn't answered yet". mobile-app's boot
+    // logic uses this (null vs set) to decide whether a logged-in student
+    // goes straight to MainTabs or still needs to finish the onboarding
+    // flow past registration.
+    onboardingCompletedAt DateTime?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
     // Which service sends this student their reminders/quick-consult
     // replies — "whatsapp" | "telegram", switchable any time from

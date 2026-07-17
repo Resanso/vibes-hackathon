@@ -1,6 +1,8 @@
-# Exercises the "Cek Baru" tab: re-triggers BorrowingScenario→
-# FinancialRiskIntelligence in standalone mode (no step header, skips
-# FinancialSurvivalCheck since the profile already exists from onboarding).
+# Registers a fresh account, completes the full onboarding chain so
+# onboardingCompletedAt gets set, logs out from ProfileTab, then logs back in
+# with the same credentials — proving both the register->login round-trip
+# and the "skip onboarding, straight to dashboard" behavior for a returning
+# user (see App.tsx's initialRouteName logic).
 appId: com.nera.app
 ---
 - launchApp:
@@ -44,27 +46,23 @@ appId: com.nera.app
 - assertVisible: "Analisis Risiko Pinjamanmu"
 - tapOn:
     id: "fri-see-alternatives-button"
+- assertVisible: "Alternatif yang Bisa Kamu Pertimbangkan"
 - tapOn:
     id: "ds-see-dashboard-button"
 - assertVisible: "Terus pantau skormu"
 
-- tapOn: "Cek Baru"
-- assertVisible: "Ceritakan Pinjaman yang Kamu Pertimbangkan"
-- assertNotVisible: "Langkah 3 dari 5"
+- tapOn: "Profil"
 - tapOn:
-    id: "bs-principal-input"
-- inputText: "1000000"
-- tapOn:
-    id: "bs-interest-rate-input"
-- inputText: "10"
-- tapOn:
-    id: "bs-tenor-input"
-- inputText: "3"
-- tapOn:
-    id: "bs-submit-button"
-- assertVisible: "Analisis Risiko Pinjamanmu"
+    id: "logout-button"
 - assertVisible:
-    id: "fri-done-button"
+    id: "login-submit-button"
+
 - tapOn:
-    id: "fri-done-button"
+    id: "login-email-input"
+- inputText: "test${output.uniqueId}@nera.test"
+- tapOn:
+    id: "login-password-input"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit-button"
 - assertVisible: "Terus pantau skormu"
