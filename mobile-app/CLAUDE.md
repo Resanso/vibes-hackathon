@@ -99,13 +99,21 @@ before submission.
   the name is legacy). `{ phone, name, token, onboardingCompletedAt,
   isRestoring }`, set by `Register`/`Login` via `setSession()`, or restored
   on boot via `restoreSession()` (verifies the token against `auth.me`
-  rather than trusting `expo-secure-store` blindly). `clearSession()` powers
-  both a real "Keluar" tap and `ProfileTab`'s testing-only reset — same
-  effect either way, forget the local session so the app boots back into
-  `Login`. **Never select an object literal out of a Zustand store**
-  (`useStore((s) => ({ a: s.a, b: s.b }))`) — it returns a new reference
-  every render and causes an infinite re-render loop ("Maximum update depth
-  exceeded"). Select each primitive field separately.
+  rather than trusting storage blindly). `clearSession()` powers both a
+  real "Keluar" tap and `ProfileTab`'s testing-only reset — same effect
+  either way, forget the local session so the app boots back into `Login`.
+  **`expo-secure-store` needs its native module compiled into the running
+  binary, confirmed the hard way (2026-07-17)**: a tester hit "Cannot find
+  native module 'ExpoSecureStore'" on a dev-client build made before this
+  dependency was added — same class of issue as `formDraft.ts`'s
+  AsyncStorage note below, just discovered later. `safeSetItem`/
+  `safeGetItem`/`safeDeleteItem` in this file catch that and fall back to
+  an in-memory `Map` (not persisted across restarts, but doesn't crash) —
+  do a full native rebuild (`npx expo run:ios`/`run:android`) to actually
+  get persistence back. **Never select an object literal out of a Zustand
+  store** (`useStore((s) => ({ a: s.a, b: s.b }))`) — it returns a new
+  reference every render and causes an infinite re-render loop ("Maximum
+  update depth exceeded"). Select each primitive field separately.
 - `src/utils/formDraft.ts` — in-memory (not persisted across app restarts)
   draft storage so typed form values survive navigating away and back
   within a session. Not backed by AsyncStorage — that native module wasn't

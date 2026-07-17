@@ -3,19 +3,64 @@ import { create } from "zustand";
 
 import { getSession, type Profile } from "../api/client";
 
-// Persisted via expo-secure-store (official Expo SDK module, works in
-// standard Expo Go/dev-client builds without a native rebuild — unlike the
-// AsyncStorage situation noted in ../utils/formDraft.ts) so a logged-in
-// student isn't asked to register/login again every app launch. `token` is
-// verified server-side on boot via auth.me (see restoreSession) rather than
-// trusted just because it's present in storage.
+// expo-secure-store is an official Expo SDK module, but like AsyncStorage
+// (see ../utils/formDraft.ts) it still needs its native module compiled
+// into whatever binary is actually running — a custom dev-client built
+// before this dependency was added throws "Cannot find native module
+// 'ExpoSecureStore'" the first time any of its functions are called, not at
+// import time. These wrappers catch that so the app degrades to an
+// in-memory (not persisted across restarts) session instead of crashing —
+// swap back to trusting SecureStore directly once every tester has rebuilt
+// their dev client (`npx expo run:ios` / `npx expo run:android`) with this
+// dependency included.
+const memoryFallback = new Map<string, string>();
+let secureStoreUnavailable = false;
+
+async function safeSetItem(key: string, value: string): Promise<void> {
+  if (secureStoreUnavailable) {
+    memoryFallback.set(key, value);
+    return;
+  }
+  try {
+    await SecureStore.setItemAsync(key, value);
+  } catch {
+    secureStoreUnavailable = true;
+    memoryFallback.set(key, value);
+  }
+}
+
+async function safeGetItem(key: string): Promise<string | null> {
+  if (secureStoreUnavailable) {
+    return memoryFallback.get(key) ?? null;
+  }
+  try {
+    return await SecureStore.getItemAsync(key);
+  } catch {
+    secureStoreUnavailable = true;
+    return memoryFallback.get(key) ?? null;
+  }
+}
+
+async function safeDeleteItem(key: string): Promise<void> {
+  if (secureStoreUnavailable) {
+    memoryFallback.delete(key);
+    return;
+  }
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    secureStoreUnavailable = true;
+    memoryFallback.delete(key);
+  }
+}
+
 const TOKEN_KEY = "nera_session_token";
 
 interface SessionState {
   phone: string | null;
   name: string | null;
   token: string | null;
-  // null = still checking SecureStore/auth.me; false = checked, no valid
+  // null = still checking storage/auth.me; false = checked, no valid
   // session; true = checked, session restored. App.tsx's boot screen keys
   // off this to avoid a Login-screen flash before the check finishes.
   isRestoring: boolean;
@@ -33,7 +78,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   onboardingCompletedAt: null,
 
   setSession: async (profile, token) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    await safeSetItem(TOKEN_KEY, token);
     set({
       phone: profile.phone,
       name: profile.name,
@@ -44,7 +89,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   },
 
   restoreSession: async () => {
-    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    const token = await safeGetItem(TOKEN_KEY);
     if (!token) {
       set({ isRestoring: false });
       return;
@@ -61,7 +106,7 @@ export const useSessionStore = create<SessionState>((set) => ({
       });
     } catch {
       // Token invalid/expired — same as no session at all.
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await safeDeleteItem(TOKEN_KEY);
       set({ phone: null, name: null, token: null, onboardingCompletedAt: null, isRestoring: false });
     }
   },
@@ -70,7 +115,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   // "Reset Onboarding" button — same effect either way: forget the local
   // session so the app boots back into Login next time.
   clearSession: async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await safeDeleteItem(TOKEN_KEY);
     set({ phone: null, name: null, token: null, onboardingCompletedAt: null });
   },
 }));
