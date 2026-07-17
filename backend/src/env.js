@@ -18,8 +18,15 @@ export const env = createEnv({
     // as trusted infra calling this API at all), this one authenticates
     // *which student* is calling, issued only after a real password check.
     JWT_SECRET: z.string().min(32),
-    MAIA_API_KEY: z.string().optional(),
-    MAIA_BASE_URL: z.string().url().optional(),
+    // OpenAI-compatible LLM provider for explainRisk()/AI Coach. Originally
+    // MAIA Router, switched to calling DeepSeek's own API directly
+    // (2026-07-17) — MAIA Router's IP was unreachable from this VPS
+    // specifically ("no route to host", confirmed a VPS-network-side
+    // block: DeepSeek's own API, same VPS, same day, connects fine).
+    // Provider-neutral names since this is now the second provider behind
+    // them; swap the two values again if the provider changes once more.
+    AI_API_KEY: z.string().optional(),
+    AI_BASE_URL: z.string().url().optional(),
     // whatsapp-service's localhost-only internal trigger server (same VPS) —
     // used by reminders.triggerNow, see src/server/api/routers/reminders.ts
     WHATSAPP_SERVICE_URL: z.string().url().default("http://localhost:4001"),
@@ -46,8 +53,8 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     SHARED_API_KEY: process.env.SHARED_API_KEY,
     JWT_SECRET: process.env.JWT_SECRET,
-    MAIA_API_KEY: process.env.MAIA_API_KEY,
-    MAIA_BASE_URL: process.env.MAIA_BASE_URL,
+    AI_API_KEY: process.env.AI_API_KEY,
+    AI_BASE_URL: process.env.AI_BASE_URL,
     WHATSAPP_SERVICE_URL: process.env.WHATSAPP_SERVICE_URL,
     TELEGRAM_SERVICE_URL: process.env.TELEGRAM_SERVICE_URL,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,

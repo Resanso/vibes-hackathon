@@ -8,9 +8,9 @@ import { createTRPCContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { assessRiskForPhone } from "~/server/services/assessRisk";
 
-const maia =
-  env.MAIA_API_KEY && env.MAIA_BASE_URL
-    ? createOpenAI({ apiKey: env.MAIA_API_KEY, baseURL: env.MAIA_BASE_URL })
+const ai =
+  env.AI_API_KEY && env.AI_BASE_URL
+    ? createOpenAI({ apiKey: env.AI_API_KEY, baseURL: env.AI_BASE_URL })
     : null;
 
 const SYSTEM_PROMPT = [
@@ -45,7 +45,7 @@ async function buildCaller() {
 // RiskEntry exactly like the old /cek command did), then persists both the
 // user message and the assistant's reply so the next turn has context.
 export async function chatWithCoach(phone: string, userMessage: string): Promise<string> {
-  if (!maia) {
+  if (!ai) {
     return fallbackReply();
   }
 
@@ -59,14 +59,14 @@ export async function chatWithCoach(phone: string, userMessage: string): Promise
 
   try {
     const result = await generateText({
-      // .chat(), not the bare maia("...") call — that defaults to OpenAI's
+      // .chat(), not the bare ai("...") call — that defaults to OpenAI's
       // newer Responses API (/v1/responses), a format most third-party
-      // OpenAI-compatible gateways (including MAIA Router, presumably)
-      // don't implement. .chat() targets /v1/chat/completions, the
-      // universally-supported format — same one explainRisk.ts already
-      // uses via the raw `openai` package. Confirmed via VPS logs
-      // (2026-07-17): requests were hitting /v1/responses before this fix.
-      model: maia.chat("deepseek-v4-flash"),
+      // OpenAI-compatible gateways don't implement. .chat() targets
+      // /v1/chat/completions, the universally-supported format — same one
+      // explainRisk.ts uses via the raw `openai` package. DeepSeek Flash,
+      // called directly (api.deepseek.com) — switched from MAIA Router
+      // 2026-07-17, see explainRisk.ts's comment for why.
+      model: ai.chat("deepseek-v4-flash"),
       system: SYSTEM_PROMPT,
       messages: [
         ...history.map((m) => ({
@@ -133,7 +133,7 @@ export async function chatWithCoach(phone: string, userMessage: string): Promise
 
     return reply;
   } catch (error) {
-    console.error("[chatWithCoach] MAIA call failed", error);
+    console.error("[chatWithCoach] AI call failed", error);
     return fallbackReply();
   }
 }

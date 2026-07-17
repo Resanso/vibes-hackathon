@@ -14,17 +14,30 @@ frontend is `mobile-app`.
 - **Data fetching**: `@tanstack/react-query` v5 via tRPC React Query integration, SuperJSON as the transformer
 - **Env validation**: `@t3-oss/env-nextjs` (schema in `src/env.js`)
 - **Package manager**: npm (`packageManager: npm@10.9.8` in package.json)
-- **AI**: MAIA Router, OpenAI-compatible gateway, not a direct Anthropic SDK call:
+- **AI**: DeepSeek's own API, called OpenAI-compatible-style (not a direct
+  Anthropic SDK call). **Switched from MAIA Router 2026-07-17** — MAIA's IP
+  (`router.maia.id`) was unreachable from this VPS specifically ("no route
+  to host"; confirmed the VPS-network-side by successfully curling
+  DeepSeek's own API from the very same VPS the same day). Env vars stayed
+  provider-neutral (`AI_API_KEY`/`AI_BASE_URL`, not `DEEPSEEK_*`) in case
+  the provider changes again:
 
   ```ts
   import OpenAI from "openai";
 
-  const maia = new OpenAI({
-    apiKey: process.env.MAIA_API_KEY,
-    baseURL: process.env.MAIA_BASE_URL, // https://router.maia.id/v1
+  const ai = new OpenAI({
+    apiKey: process.env.AI_API_KEY,
+    baseURL: process.env.AI_BASE_URL, // https://api.deepseek.com
   });
-  // check MAIA Router's docs for the exact model string before hardcoding one
+  // model: "deepseek-v4-flash" — confirmed via DeepSeek's own /models
+  // endpoint, not guessed
   ```
+
+  If switching providers again: `@ai-sdk/openai`'s bare `provider("model")`
+  call defaults to OpenAI's Responses API (`/v1/responses`), which most
+  third-party gateways don't implement — always use `provider.chat("model")`
+  for the universally-supported Chat Completions format instead (see
+  `coachChat.ts`'s comment; this cost real debugging time once already).
 
 This is a `create-t3-app` scaffold (T3 Stack), repurposed as an API-only server —
 `src/app/page.tsx` is a bare health-check, not a real UI.
@@ -60,7 +73,7 @@ Run with `npm run <script>`:
 - `src/server/api/trpc.ts` — tRPC setup: context, base procedures (`publicProcedure`), middleware. Add new procedure types (e.g. `protectedProcedure`) here.
 - `src/server/db.ts` — Prisma client singleton.
 - `src/server/logic/riskScore.ts` — `calculateRiskScore()`, deterministic and pure — NEVER let the AI produce the score.
-- `src/server/ai/explainRisk.ts` — `explainRisk()`, the MAIA Router call that turns a score + reasons into a plain-language explanation (used inside `assessRiskForPhone`).
+- `src/server/ai/explainRisk.ts` — `explainRisk()`, the DeepSeek call that turns a score + reasons into a plain-language explanation (used inside `assessRiskForPhone`).
 - `src/server/ai/coachChat.ts` — `chatWithCoach()`, the AI Coach: multi-turn free-text chat (see "AI Coach" below).
 - `src/server/services/assessRisk.ts` — `assessRiskForPhone()`, shared by `risk.assess` and the AI Coach's `assessLoanRisk` tool so a loan simulation always creates the same `RiskEntry` regardless of which surface triggered it.
 - `prisma/schema.prisma` — Prisma schema (source of truth for DB models).
@@ -112,7 +125,8 @@ student sends is forwarded as-is to `chat.message`
 (`src/server/ai/coachChat.ts`).
 
 - Uses the Vercel AI SDK (`ai` + `@ai-sdk/openai`, the latter pointed at
-  MAIA Router's OpenAI-compatible base URL) with **tool-calling**:
+  DeepSeek's OpenAI-compatible base URL — see the "AI" stack entry above for
+  the MAIA Router → DeepSeek switch) with **tool-calling**:
   `assessLoanRisk` (wraps `assessRiskForPhone` — the model extracts
   principal/interest/fee/tenor from a natural-language sentence instead of a
   rigid command format), `checkIn` and `getTrackingStatus` (wrap
@@ -128,12 +142,8 @@ student sends is forwarded as-is to `chat.message`
   stays deterministic (`calculateRiskScore`) exactly as before, only the
   *conversational* layer around it is AI-driven now.
 - Falls back to a canned "coba lagi sebentar lagi" reply if
-  `MAIA_API_KEY`/`MAIA_BASE_URL` aren't set or the call fails — same
-  fail-open philosophy as `explainRisk()`. **As of this writing, MAIA
-  Router is unreachable from the VPS** (`router.maia.id` — "no route to
-  host", likely an IP-allowlist issue on MAIA's side) — the chat feature is
-  code-complete and typechecked but has not been verified against a live
-  MAIA response. Confirm connectivity before treating this as demo-ready.
+  `AI_API_KEY`/`AI_BASE_URL` aren't set or the call fails — same fail-open
+  philosophy as `explainRisk()`.
 - **Note the circular import**: `chat.ts` → `coachChat.ts` → `root.ts`
   (for `createCaller`) → `chat.ts`. Safe in practice because `createCaller`
   is only ever invoked lazily inside an async function body, never at
@@ -188,7 +198,7 @@ tRPC routers under `src/server/api/routers/`:
 ```
 IN scope:
 - simulation router (build FIRST — no AI dependency, highest value)
-- risk router: deterministic score + at least one working MAIA Router call
+- risk router: deterministic score + at least one working LLM explanation call
 - recommendations router with hardcoded seed data
 - dashboard router (aggregation query, feeds mobile-app step 6)
 

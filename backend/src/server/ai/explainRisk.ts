@@ -3,9 +3,9 @@ import OpenAI from "openai";
 import { env } from "~/env";
 import type { RiskScoreResult } from "~/server/logic/riskScore";
 
-const maia =
-  env.MAIA_API_KEY && env.MAIA_BASE_URL
-    ? new OpenAI({ apiKey: env.MAIA_API_KEY, baseURL: env.MAIA_BASE_URL })
+const ai =
+  env.AI_API_KEY && env.AI_BASE_URL
+    ? new OpenAI({ apiKey: env.AI_API_KEY, baseURL: env.AI_BASE_URL })
     : null;
 
 function fallbackExplanation(risk: RiskScoreResult): string {
@@ -14,22 +14,22 @@ function fallbackExplanation(risk: RiskScoreResult): string {
   );
 }
 
-// One MAIA Router call that turns a deterministic score + reasons into a
-// short plain-language paragraph. Never throws — narration failing must not
+// One LLM call that turns a deterministic score + reasons into a short
+// plain-language paragraph. Never throws — narration failing must not
 // block the risk assessment itself, so any error falls back to a canned
 // explanation built straight from `reasons`.
 export async function explainRisk(risk: RiskScoreResult): Promise<string> {
-  if (!maia) {
+  if (!ai) {
     return fallbackExplanation(risk);
   }
 
   try {
-    const completion = await maia.chat.completions.create({
-      // DeepSeek Flash via MAIA Router — not independently verified against
-      // MAIA's own docs (router.maia.id was unreachable — "no route to
-      // host" — from both the VPS and a local sandbox when this was wired
-      // up; likely an IP-allowlist requirement on MAIA's side). If this
-      // model string 404s, check MAIA Router's dashboard for the exact ID.
+    const completion = await ai.chat.completions.create({
+      // DeepSeek Flash, called directly (api.deepseek.com) — switched from
+      // MAIA Router 2026-07-17 after MAIA's IP proved unreachable from this
+      // VPS specifically ("no route to host"); DeepSeek's own API works
+      // fine from the same VPS. Model id confirmed via DeepSeek's own
+      // /models endpoint, not guessed.
       model: "deepseek-v4-flash",
       messages: [
         {
@@ -49,7 +49,7 @@ export async function explainRisk(risk: RiskScoreResult): Promise<string> {
       ? explanation
       : fallbackExplanation(risk);
   } catch (error) {
-    console.error("[explainRisk] MAIA call failed, using fallback", error);
+    console.error("[explainRisk] AI call failed, using fallback", error);
     return fallbackExplanation(risk);
   }
 }
