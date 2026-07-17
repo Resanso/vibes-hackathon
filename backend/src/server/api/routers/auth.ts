@@ -5,6 +5,21 @@ import { signSessionToken } from "~/server/auth/jwt";
 import { hashPassword, verifyPassword } from "~/server/auth/password";
 import { apiKeyProcedure, authedProcedure, createTRPCRouter } from "~/server/api/trpc";
 
+// Canonicalizes to the same international-digits-only format WhatsApp JIDs
+// and Telegram's contact.phone_number already use (e.g. "6281234567890",
+// never "081234567890" or "+62812...") — without this, a student registering
+// with a leading "0" would never match either messaging service's own phone
+// format, and linking/quick-consult would silently fail on a phone that
+// "looks the same" to a human but isn't byte-for-byte identical. Confirmed
+// the hard way on 2026-07-17: a real profile registered with a leading 0
+// couldn't link Telegram until manually migrated to this format.
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("62")) return digits;
+  if (digits.startsWith("0")) return `62${digits.slice(1)}`;
+  return `62${digits}`;
+}
+
 export const authRouter = createTRPCRouter({
   // Creates the Profile row itself (not profile.upsert — that's for
   // FinancialSurvivalCheck filling in the financial fields afterward).
@@ -20,9 +35,11 @@ export const authRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const phone = normalizePhone(input.phone);
+
       const [existingEmail, existingPhone] = await Promise.all([
         ctx.db.profile.findUnique({ where: { email: input.email } }),
-        ctx.db.profile.findUnique({ where: { phone: input.phone } }),
+        ctx.db.profile.findUnique({ where: { phone } }),
       ]);
 
       if (existingEmail) {
@@ -36,7 +53,7 @@ export const authRouter = createTRPCRouter({
 
       const profile = await ctx.db.profile.create({
         data: {
-          phone: input.phone,
+          phone,
           email: input.email,
           passwordHash,
           name: input.name,
